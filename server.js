@@ -456,7 +456,7 @@ app.listen(PORT, async () => {
         } catch (e) {
             console.error('[Auto-sync] Failed:', e.message);
         }
-    }, 60 * 1000); // every 60 seconds
+    }, 30 * 1000); // every 30 seconds
 
-    console.log('[Startup] Auto-sync enabled (every 60s)');
+    console.log('[Startup] Auto-sync enabled (every 30s)');
 });
