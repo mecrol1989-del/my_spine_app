@@ -4,6 +4,69 @@ let chats = [];
 let messages = [];
 let evtSource = null;
 
+// VAPID public key for push notifications
+const VAPID_PUBLIC_KEY = 'BFryNn-yGoGoD8H8skull9MC1-zYxKWBgeH7KP761NuDL3extWoltYHEe8XOtg31ydllqCCJDWzymsv_VUGeRrI';
+
+// Register Service Worker & Push Notifications
+async function setupPushNotifications() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.log('Push notifications not supported');
+        return;
+    }
+
+    try {
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        console.log('SW registered:', registration.scope);
+
+        // Request notification permission
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            console.log('Notification permission denied');
+            return;
+        }
+
+        // Subscribe to push
+        const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
+
+        // Send subscription to server
+        await fetch('/api/push/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(subscription)
+        });
+
+        console.log('Push notification subscription sent to server');
+    } catch (err) {
+        console.error('Push setup failed:', err);
+    }
+}
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+// Listen for SW messages (e.g., open chat from notification click)
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', event => {
+        if (event.data.type === 'OPEN_CHAT') {
+            const chatId = event.data.chatId;
+            if (chatId) {
+                openChat(chatId, formatPhone(chatId));
+            }
+        }
+    });
+}
+
 // DOM Elements
 const screens = {
     login: document.getElementById('login-screen'),
@@ -127,6 +190,7 @@ async function initApp() {
 
     await loadChats();
     initSSE();
+    setupPushNotifications();
 
     // Auto resize textarea
     elems.messageInput.addEventListener('input', function () {

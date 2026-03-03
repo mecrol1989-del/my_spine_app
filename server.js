@@ -6,6 +6,20 @@ const path = require('path');
 const multer = require('multer');
 const db = require('./db');
 const { v4: uuidv4 } = require('uuid');
+const webpush = require('web-push');
+
+// VAPID keys for push notifications
+const VAPID_PUBLIC_KEY = 'BFryNn-yGoGoD8H8skull9MC1-zYxKWBgeH7KP761NuDL3extWoltYHEe8XOtg31ydllqCCJDWzymsv_VUGeRrI';
+const VAPID_PRIVATE_KEY = '3-d6JopSn9YXQKLQARtL9jqR12VkpldPOmCKKWjiDkQ';
+
+webpush.setVapidDetails(
+    'mailto:admin@myspine.kz',
+    VAPID_PUBLIC_KEY,
+    VAPID_PRIVATE_KEY
+);
+
+// Push subscriptions (in-memory)
+let pushSubscriptions = [];
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -300,6 +314,43 @@ app.post('/api/chats/:chatId/read', requireAuth, async (req, res) => {
 // WEBHOOK (From 1msg.io)
 // ==========================================
 
+// Push notification subscription
+app.post('/api/push/subscribe', requireAuth, (req, res) => {
+    const subscription = req.body;
+    // Avoid duplicates
+    const exists = pushSubscriptions.find(s => s.endpoint === subscription.endpoint);
+    if (!exists) {
+        pushSubscriptions.push(subscription);
+        console.log(`[Push] New subscription added. Total: ${pushSubscriptions.length}`);
+    }
+    res.json({ success: true });
+});
+
+// Send push notification to all subscribed devices
+async function sendPushNotification(title, body, chatId) {
+    const payload = JSON.stringify({
+        title: title,
+        body: body,
+        tag: chatId,
+        chatId: chatId,
+        url: '/'
+    });
+
+    const expired = [];
+    for (const sub of pushSubscriptions) {
+        try {
+            await webpush.sendNotification(sub, payload);
+        } catch (err) {
+            if (err.statusCode === 410 || err.statusCode === 404) {
+                expired.push(sub);
+            }
+            console.error('[Push] Error:', err.statusCode || err.message);
+        }
+    }
+    // Remove expired subscriptions
+    pushSubscriptions = pushSubscriptions.filter(s => !expired.includes(s));
+}
+
 app.post('/webhook', (req, res) => {
     const data = req.body;
 
@@ -325,6 +376,13 @@ app.post('/webhook', (req, res) => {
 
             // Notify frontend via SSE
             notifyClients({ type: 'NEW_MESSAGE', data: dbMsg });
+
+            // Send push notification for incoming messages (not from us)
+            if (!msg.fromMe) {
+                const sender = msg.senderName || msg.chatId.replace('@c.us', '').replace('@g.us', '');
+                const preview = msg.body ? msg.body.substring(0, 100) : (msg.type || 'Media');
+                sendPushNotification(`💬 ${sender}`, preview, msg.chatId);
+            }
         }
     });
 
