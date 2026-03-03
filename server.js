@@ -20,12 +20,13 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+app.set('trust proxy', 1); // Trust Render's proxy
 app.use(session({
     secret: process.env.SESSION_SECRET || 'super_secret',
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: false, // set true only behind https proxy
+        secure: false,
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
 }));
