@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WhatsApp Web - 1msg.io</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="screen">
+        <div class="login-card">
+            <div class="logo">
+                <i class="fab fa-whatsapp"></i>
+                <h2>Welcome</h2>
+            </div>
+            <form id="login-form">
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="username" placeholder="Username" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="password" placeholder="Password" required>
+                </div>
+                <button type="submit" class="btn-primary">Login</button>
+                <div id="login-error" class="error-msg"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Chat Interface -->
+    <div id="app-screen" class="screen hidden">
+        <div class="app-container">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <header class="sidebar-header">
+                    <div class="user-profile">
+                        <img src="https://ui-avatars.com/api/?name=Admin&background=128C7E&color=fff" alt="Profile"
+                            id="my-avatar">
+                        <h3 id="my-name">My Account</h3>
+                    </div>
+                    <div class="sidebar-actions">
+                        <button id="sync-btn" title="Sync messages from 1msg.io"><i
+                                class="fas fa-sync-alt"></i></button>
+                        <button id="new-chat-btn" title="New Chat"><i class="fas fa-plus"></i></button>
+                        <button id="logout-btn" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
+                    </div>
+                </header>
+
+                <div class="search-bar">
+                    <div class="search-input">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="search-chats" placeholder="Search or start new chat">
+                    </div>
+                </div>
+
+                <div class="chat-list" id="chat-list">
+                    <!-- Chat items will be injected here -->
+                    <div class="loading-spinner"><i class="fas fa-circle-notch fa-spin"></i></div>
+                </div>
+            </aside>
+
+            <!-- Main Chat Area -->
+            <main class="chat-area hidden" id="chat-area">
+                <header class="chat-header">
+                    <div class="chat-contact-info">
+                        <button class="back-btn" id="back-to-list"><i class="fas fa-arrow-left"></i></button>
+                        <div class="avatar" id="current-chat-avatar"></div>
+                        <div class="contact-details">
+                            <h3 id="current-chat-name">Select a chat</h3>
+                            <span class="status" id="current-chat-status"></span>
+                        </div>
+                    </div>
+                    <div class="chat-actions">
+                        <button title="Search"><i class="fas fa-search"></i></button>
+                        <button title="More options"><i class="fas fa-ellipsis-v"></i></button>
+                    </div>
+                </header>
+
+                <div class="messages-container" id="messages-container">
+                    <!-- Messages will be injected here -->
+                    <div class="empty-state">Select a chat to start messaging</div>
+                </div>
+
+                <footer class="chat-input-area" id="chat-input-area">
+                    <button class="icon-btn" id="attach-btn"><i class="fas fa-paperclip"></i></button>
+                    <div class="input-wrapper">
+                        <textarea id="message-input" placeholder="Type a message" rows="1"></textarea>
+                    </div>
+                    <button class="icon-btn" id="send-btn"><i class="fas fa-paper-plane"></i></button>
+                </footer>
+
+                <!-- File upload overlay -->
+                <div class="file-overlay hidden" id="file-overlay">
+                    <div class="file-dialog">
+                        <button class="close-dialog"><i class="fas fa-times"></i></button>
+                        <h3>Send File</h3>
+                        <div class="file-preview" id="file-preview"></div>
+                        <input type="text" id="file-caption" placeholder="Add a caption...">
+                        <div class="dialog-actions">
+                            <button class="btn-secondary" id="cancel-file">Cancel</button>
+                            <button class="btn-primary" id="send-file-btn">Send <i
+                                    class="fas fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Hidden file input -->
+                <input type="file" id="file-input" class="hidden">
+            </main>
+
+            <!-- Default placeholder when no chat selected -->
+            <div class="no-chat-selected" id="no-chat-selected">
+                <div class="welcome-illustration">
+                    <i class="fab fa-whatsapp"></i>
+                </div>
+                <h2>WhatsApp Web via 1msg.io</h2>
+                <p>Send and receive messages seamlessly</p>
+                <div class="encryption-notice">
+                    <i class="fas fa-lock"></i> End-to-end encrypted integration
+                </div>
+            </div>
+        </div>
+
+        <!-- New Chat Modal -->
+        <div class="modal hidden" id="new-chat-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>New Chat</h3>
+                    <button id="close-modal"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="modal-body">
+                    <div class="input-group">
+                        <label for="new-phone">Phone Number (with country code):</label>
+                        <input type="text" id="new-phone" placeholder="e.g. 79991234567">
+                        <small>Include country code without '+' (e.g., 7 for Russia/KZ)</small>
+                    </div>
+                    <button class="btn-primary" id="start-new-chat">Start Chat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
