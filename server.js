@@ -68,33 +68,34 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
 async function syncMessagesFrom1msg() {
     console.log('[Sync] Pulling existing messages from 1msg.io...');
     try {
-        // Fetch last messages (limit=0 means all available)
         const data = await apiRequest('/messages', 'GET');
+        const messages = data && data.messages;
 
-        if (data && data.messages && Array.isArray(data.messages)) {
-            let newCount = 0;
-            data.messages.forEach(msg => {
-                if (!db.messageExists(msg.id)) {
-                    db.saveMessage({
-                        id: msg.id,
-                        chatId: msg.chatId,
-                        body: msg.body || '',
-                        fromMe: msg.fromMe,
-                        senderName: msg.senderName || '',
-                        time: msg.time,
-                        type: msg.type || 'chat',
-                        caption: msg.caption || '',
-                        quotedMsgId: msg.quotedMsgId || ''
-                    });
-                    newCount++;
-                }
-            });
-            console.log(`[Sync] Synced ${newCount} new messages (total from API: ${data.messages.length})`);
-            return { synced: newCount, total: data.messages.length };
-        } else {
-            console.log('[Sync] No messages returned from API or unexpected format:', JSON.stringify(data).substring(0, 200));
-            return { synced: 0, total: 0, raw: data };
+        if (!messages || !Array.isArray(messages) || messages.length === 0) {
+            console.log('[Sync] No messages returned from API:', JSON.stringify(data).substring(0, 200));
+            return { synced: 0, total: 0 };
         }
+
+        let totalNew = 0;
+        messages.forEach(msg => {
+            if (!db.messageExists(msg.id)) {
+                db.saveMessage({
+                    id: msg.id,
+                    chatId: msg.chatId || (msg.chatName ? msg.chatName + '@c.us' : 'unknown@c.us'),
+                    body: msg.body || '',
+                    fromMe: msg.fromMe || msg.self || 0,
+                    senderName: msg.senderName || msg.chatName || '',
+                    time: msg.time,
+                    type: msg.type || 'chat',
+                    caption: msg.caption || '',
+                    quotedMsgId: msg.quotedMsgId || ''
+                });
+                totalNew++;
+            }
+        });
+
+        console.log(`[Sync] Synced ${totalNew} new messages (total from API: ${messages.length})`);
+        return { synced: totalNew, total: messages.length };
     } catch (e) {
         console.error('[Sync] Error syncing messages:', e.message);
         return { error: e.message };
@@ -384,4 +385,20 @@ app.listen(PORT, async () => {
     if (process.env.WEBHOOK_URL) {
         await setupWebhook();
     }
+
+    // Periodic auto-sync every 60 seconds
+    setInterval(async () => {
+        try {
+            const result = await syncMessagesFrom1msg();
+            if (result.synced > 0) {
+                console.log(`[Auto-sync] ${result.synced} new messages`);
+                // Notify all SSE clients about new messages
+                notifyClients({ type: 'SYNC_UPDATE', data: { synced: result.synced } });
+            }
+        } catch (e) {
+            console.error('[Auto-sync] Failed:', e.message);
+        }
+    }, 60 * 1000); // every 60 seconds
+
+    console.log('[Startup] Auto-sync enabled (every 60s)');
 });

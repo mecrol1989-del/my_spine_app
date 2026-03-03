@@ -242,6 +242,12 @@ function initSSE() {
             handleNewMessage(data.data);
         } else if (data.type === 'ACK_UPDATE') {
             handleAckUpdate(data.data);
+        } else if (data.type === 'SYNC_UPDATE') {
+            // Auto-sync pulled new messages, refresh chat list
+            loadChats();
+            if (currentChatId) {
+                openChat(currentChatId, elems.currentChatName.textContent);
+            }
         }
     };
 
