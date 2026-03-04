@@ -310,6 +310,42 @@ app.post('/api/chats/:chatId/read', requireAuth, async (req, res) => {
     res.json({ success: true });
 });
 
+// Send voice message (base64 audio)
+app.post('/api/chats/:chatId/send-voice', requireAuth, async (req, res) => {
+    const { chatId } = req.params;
+    const { audio } = req.body; // base64 audio data
+
+    try {
+        const payload = {
+            chatId,
+            body: audio,
+            filename: 'voice.ogg',
+            caption: ''
+        };
+
+        const response = await apiRequest('/sendFile', 'POST', payload);
+
+        if (response.sent) {
+            const tempMsg = {
+                id: response.id || `voice_${Date.now()}`,
+                chatId: chatId,
+                body: audio,
+                fromMe: true,
+                senderName: 'Me',
+                time: Math.floor(Date.now() / 1000),
+                type: 'ptt',
+                caption: ''
+            };
+            db.saveMessage(tempMsg);
+            notifyClients({ type: 'NEW_MESSAGE', data: tempMsg });
+        }
+
+        res.json(response);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // ==========================================
 // TAG MANAGEMENT
 // ==========================================

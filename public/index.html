@@ -115,7 +115,17 @@
                         <textarea id="message-input" placeholder="Type a message" rows="1"></textarea>
                     </div>
                     <button class="icon-btn" id="send-btn"><i class="fas fa-paper-plane"></i></button>
+                    <button class="icon-btn" id="mic-btn"><i class="fas fa-microphone"></i></button>
                 </footer>
+
+                <!-- Voice recording overlay -->
+                <div class="voice-recording-overlay hidden" id="voice-recording-overlay">
+                    <div class="voice-recording-content">
+                        <div class="rec-indicator"><span class="rec-dot"></span> <span id="rec-timer">0:00</span></div>
+                        <button class="voice-cancel-btn" id="voice-cancel"><i class="fas fa-trash"></i></button>
+                        <button class="voice-send-btn" id="voice-send"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
 
                 <!-- File upload overlay -->
                 <div class="file-overlay hidden" id="file-overlay">

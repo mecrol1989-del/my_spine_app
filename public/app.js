@@ -110,6 +110,12 @@ const elems = {
     filePreview: document.getElementById('file-preview'),
     fileCaption: document.getElementById('file-caption'),
 
+    micBtn: document.getElementById('mic-btn'),
+    voiceOverlay: document.getElementById('voice-recording-overlay'),
+    voiceCancel: document.getElementById('voice-cancel'),
+    voiceSend: document.getElementById('voice-send'),
+    recTimer: document.getElementById('rec-timer'),
+
     toast: document.getElementById('toast')
 };
 
@@ -536,6 +542,9 @@ async function openChat(chatId, title) {
         elems.chatArea.style.display = 'flex';
     }
 
+    // Update tag dropdown for this chat
+    updateTagDropdown();
+
     // Load messages
     elems.messagesContainer.innerHTML = '<div class="loading-spinner"><i class="fas fa-circle-notch fa-spin"></i></div>';
 
@@ -816,4 +825,131 @@ function showToast(msg) {
     setTimeout(() => {
         elems.toast.classList.add('hidden');
     }, 3000);
+}
+
+// ==========================================
+// Voice Recording
+// ==========================================
+
+let mediaRecorder = null;
+let audioChunks = [];
+let recordingTimer = null;
+let recordingSeconds = 0;
+
+function startVoiceRecording() {
+    if (!currentChatId) {
+        showToast('Сначала выберите чат');
+        return;
+    }
+
+    navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+            mediaRecorder = new MediaRecorder(stream, {
+                mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+                    ? 'audio/webm;codecs=opus'
+                    : 'audio/webm'
+            });
+            audioChunks = [];
+
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) audioChunks.push(e.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                stream.getTracks().forEach(t => t.stop());
+            };
+
+            mediaRecorder.start();
+            recordingSeconds = 0;
+            elems.recTimer.textContent = '0:00';
+            elems.voiceOverlay.classList.remove('hidden');
+            elems.micBtn.classList.add('recording');
+
+            recordingTimer = setInterval(() => {
+                recordingSeconds++;
+                const mins = Math.floor(recordingSeconds / 60);
+                const secs = recordingSeconds % 60;
+                elems.recTimer.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+            }, 1000);
+        })
+        .catch(err => {
+            console.error('Microphone access denied:', err);
+            showToast('Нет доступа к микрофону');
+        });
+}
+
+function stopRecording(send = false) {
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+
+    clearInterval(recordingTimer);
+    elems.voiceOverlay.classList.add('hidden');
+    elems.micBtn.classList.remove('recording');
+
+    if (send) {
+        mediaRecorder.onstop = () => {
+            mediaRecorder.stream.getTracks().forEach(t => t.stop());
+            const blob = new Blob(audioChunks, { type: 'audio/webm' });
+            sendVoiceMessage(blob);
+        };
+    } else {
+        mediaRecorder.onstop = () => {
+            mediaRecorder.stream.getTracks().forEach(t => t.stop());
+        };
+    }
+
+    mediaRecorder.stop();
+}
+
+async function sendVoiceMessage(blob) {
+    if (!currentChatId) return;
+
+    // Convert blob to base64
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+        const base64 = reader.result; // data:audio/webm;base64,...
+
+        try {
+            const res = await fetch(`/api/chats/${encodeURIComponent(currentChatId)}/send-voice`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ audio: base64 })
+            });
+
+            const data = await res.json();
+            if (data.sent) {
+                showToast('Голосовое отправлено');
+                loadChats();
+                if (currentChatId) {
+                    // Refresh messages
+                    const msgRes = await fetch(`/api/chats/${encodeURIComponent(currentChatId)}/messages`);
+                    messages = await msgRes.json();
+                    elems.messagesContainer.innerHTML = '';
+                    messages.forEach((msg, i) => {
+                        const prev = i > 0 ? messages[i - 1] : null;
+                        const isMine = msg.fromMe || msg.from_me === 1;
+                        const wasMine = prev ? (prev.fromMe || prev.from_me === 1) : null;
+                        const isFirst = !prev || wasMine !== isMine;
+                        renderMessage(msg, isFirst);
+                    });
+                    scrollToBottom();
+                }
+            } else {
+                showToast('Ошибка отправки: ' + (data.error || ''));
+            }
+        } catch (e) {
+            showToast('Ошибка сети');
+        }
+    };
+    reader.readAsDataURL(blob);
+}
+
+// Wire up mic button events
+if (elems.micBtn) {
+    elems.micBtn.addEventListener('click', startVoiceRecording);
+}
+if (elems.voiceCancel) {
+    elems.voiceCancel.addEventListener('click', () => stopRecording(false));
+}
+if (elems.voiceSend) {
+    elems.voiceSend.addEventListener('click', () => stopRecording(true));
 }
