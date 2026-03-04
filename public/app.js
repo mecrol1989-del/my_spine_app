@@ -273,11 +273,17 @@ async function initApp() {
 
     // Search
     elems.searchChats.addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase();
-        renderChats(getFilteredChats().filter(c =>
-            (c.chat_id && c.chat_id.toLowerCase().includes(term)) ||
-            (c.sender_name && c.sender_name.toLowerCase().includes(term))
-        ));
+        const term = e.target.value.toLowerCase().trim();
+        if (!term) {
+            filterAndRenderChats();
+            return;
+        }
+        renderChats(getFilteredChats().filter(c => {
+            const phone = (c.chat_id || '').replace('@c.us', '').replace('@g.us', '').toLowerCase();
+            const name = (c.sender_name || '').toLowerCase();
+            const body = (c.body || '').toLowerCase();
+            return phone.includes(term) || name.includes(term) || body.includes(term);
+        }));
     });
 
     // Mobile Back button
