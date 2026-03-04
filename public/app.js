@@ -3,6 +3,9 @@ let currentChatId = null;
 let chats = [];
 let messages = [];
 let evtSource = null;
+let activeTagFilter = 'all';
+
+const AVAILABLE_TAGS = ['переносит', 'висцелярная', 'проблемный', 'отменяет'];
 
 // VAPID public key for push notifications
 const VAPID_PUBLIC_KEY = 'BFryNn-yGoGoD8H8skull9MC1-zYxKWBgeH7KP761NuDL3extWoltYHEe8XOtg31ydllqCCJDWzymsv_VUGeRrI';
@@ -209,10 +212,63 @@ async function initApp() {
 
     elems.sendBtn.addEventListener('click', sendMessage);
 
+    // Tag filter chips
+    document.querySelectorAll('.tag-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            document.querySelectorAll('.tag-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            activeTagFilter = chip.dataset.tag;
+            filterAndRenderChats();
+        });
+    });
+
+    // Tag dropdown toggle
+    document.getElementById('tag-manage-btn').addEventListener('click', () => {
+        const dropdown = document.getElementById('tag-dropdown');
+        dropdown.classList.toggle('hidden');
+        if (!dropdown.classList.contains('hidden') && currentChatId) {
+            updateTagDropdown();
+        }
+    });
+
+    // Tag dropdown item clicks
+    document.querySelectorAll('.tag-dropdown-item').forEach(item => {
+        item.addEventListener('click', async () => {
+            if (!currentChatId) return;
+            const tag = item.dataset.tag;
+            const isSelected = item.classList.contains('selected');
+            try {
+                if (isSelected) {
+                    await fetch(`/api/chats/${encodeURIComponent(currentChatId)}/tags/${encodeURIComponent(tag)}`, { method: 'DELETE' });
+                    item.classList.remove('selected');
+                } else {
+                    await fetch(`/api/chats/${encodeURIComponent(currentChatId)}/tags`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tag })
+                    });
+                    item.classList.add('selected');
+                }
+                await loadChats();
+            } catch (e) {
+                showToast('Error updating tag');
+            }
+        });
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const dropdown = document.getElementById('tag-dropdown');
+        const btn = document.getElementById('tag-manage-btn');
+        if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+
     // Search
     elems.searchChats.addEventListener('input', (e) => {
         const term = e.target.value.toLowerCase();
-        renderChats(chats.filter(c =>
+        renderChats(getFilteredChats().filter(c =>
             (c.chat_id && c.chat_id.toLowerCase().includes(term)) ||
             (c.sender_name && c.sender_name.toLowerCase().includes(term))
         ));
@@ -332,7 +388,7 @@ function handleNewMessage(msg) {
             scrollToBottom();
 
             // Mark as read
-            fetch(`/api/chats/${currentChatId}/read`, {
+            fetch(`/api/chats/${encodeURIComponent(currentChatId)}/read`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ messageId: msg.id })
@@ -357,6 +413,41 @@ function handleAckUpdate(ack) {
 }
 
 // ==========================================
+// Tag Filter Helpers
+// ==========================================
+
+function getFilteredChats() {
+    if (activeTagFilter === 'all') return chats;
+    return chats.filter(c => c.tags && c.tags.includes(activeTagFilter));
+}
+
+function filterAndRenderChats() {
+    const filtered = getFilteredChats();
+    const term = elems.searchChats.value.toLowerCase();
+    if (term) {
+        renderChats(filtered.filter(c =>
+            (c.chat_id && c.chat_id.toLowerCase().includes(term)) ||
+            (c.sender_name && c.sender_name.toLowerCase().includes(term))
+        ));
+    } else {
+        renderChats(filtered);
+    }
+}
+
+async function updateTagDropdown() {
+    if (!currentChatId) return;
+    try {
+        const res = await fetch(`/api/chats/${encodeURIComponent(currentChatId)}/tags`);
+        const tags = await res.json();
+        document.querySelectorAll('.tag-dropdown-item').forEach(item => {
+            item.classList.toggle('selected', tags.includes(item.dataset.tag));
+        });
+    } catch (e) {
+        console.error('Failed to load tags', e);
+    }
+}
+
+// ==========================================
 // API & Rendering Calls
 // ==========================================
 
@@ -364,7 +455,7 @@ async function loadChats() {
     try {
         const res = await fetch('/api/chats');
         chats = await res.json();
-        renderChats(chats);
+        filterAndRenderChats();
     } catch (e) {
         console.error('Failed to load chats', e);
     }
@@ -387,13 +478,24 @@ function renderChats(chatData) {
         const time = formatTime(chat.time);
 
         let msgPreview = '';
-        if (chat.type === 'image' || chat.type === 'video' || chat.type === 'document') {
-            msgPreview = `<i class="fas fa-${chat.type === 'document' ? 'file' : 'camera'}"></i> ${chat.type}`;
+        if (chat.type === 'image') {
+            msgPreview = `<i class="fas fa-camera"></i> Фото`;
+        } else if (chat.type === 'video') {
+            msgPreview = `<i class="fas fa-video"></i> Видео`;
+        } else if (chat.type === 'ptt' || chat.type === 'audio') {
+            msgPreview = `<i class="fas fa-microphone"></i> Голосовое`;
+        } else if (chat.type === 'document') {
+            msgPreview = `<i class="fas fa-file"></i> Документ`;
         } else if (chat.body) {
             msgPreview = chat.body.substring(0, 30) + (chat.body.length > 30 ? '...' : '');
         }
 
         const tickHtml = chat.from_me === 1 ? `<span class="ticks" style="margin-right: 5px">${getTickHtml('sent')}</span>` : '';
+
+        // Tag badges
+        const tagsHtml = (chat.tags && chat.tags.length > 0)
+            ? `<div class="chat-tags">${chat.tags.map(t => `<span class="chat-tag-badge" data-tag="${t}">${t}</span>`).join('')}</div>`
+            : '';
 
         el.innerHTML = `
             <div class="chat-avatar">${phone.charAt(0)}</div>
@@ -405,6 +507,7 @@ function renderChats(chatData) {
                 <div class="chat-last-message">
                     ${tickHtml}${msgPreview}
                 </div>
+                ${tagsHtml}
             </div>
         `;
 
@@ -437,7 +540,7 @@ async function openChat(chatId, title) {
     elems.messagesContainer.innerHTML = '<div class="loading-spinner"><i class="fas fa-circle-notch fa-spin"></i></div>';
 
     try {
-        const res = await fetch(`/api/chats/${chatId}/messages`);
+        const res = await fetch(`/api/chats/${encodeURIComponent(chatId)}/messages`);
         messages = await res.json();
 
         elems.messagesContainer.innerHTML = '';
@@ -472,7 +575,7 @@ async function openChat(chatId, title) {
             // Mark last message as read if from them
             const lastMsg = messages[messages.length - 1];
             if (lastMsg && !lastMsg.fromMe) {
-                fetch(`/api/chats/${chatId}/read`, {
+                fetch(`/api/chats/${encodeURIComponent(chatId)}/read`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ messageId: lastMsg.id })
@@ -494,28 +597,50 @@ function renderMessage(msg, isFirstOfGroup = false) {
     let contentHtml = '';
     const raw = msg.raw_data || msg;
     const type = msg.type || 'chat';
+    const mediaUrl = msg.body || '';
 
     // Media rendering
     if (type === 'image') {
-        contentHtml = `<div class="message-media"><img src="${msg.body}" alt="Image"></div>`;
-        if (msg.caption) contentHtml += `<div>${escapeHtml(msg.caption)}</div>`;
+        contentHtml = `<div class="message-media"><img src="${mediaUrl}" alt="Фото" loading="lazy" onclick="window.open('${mediaUrl}','_blank')"></div>`;
+        if (msg.caption) contentHtml += `<div class="message-content">${escapeHtml(msg.caption)}</div>`;
     }
     else if (type === 'video') {
-        contentHtml = `<div class="message-media"><video src="${msg.body}" controls></video></div>`;
-        if (msg.caption) contentHtml += `<div>${escapeHtml(msg.caption)}</div>`;
+        contentHtml = `<div class="message-media"><video src="${mediaUrl}" controls preload="metadata"></video></div>`;
+        if (msg.caption) contentHtml += `<div class="message-content">${escapeHtml(msg.caption)}</div>`;
     }
-    else if (type === 'document' || type === 'audio' || type === 'ptt' || type === 'voice') {
-        let icon = type === 'document' ? 'file-alt' : 'microphone';
-        let name = msg.caption || 'Document';
+    else if (type === 'ptt' || type === 'voice') {
+        // Voice message — audio player
         contentHtml = `
-            <div class="message-document">
-                <i class="fas fa-${icon}"></i>
-                <a href="${msg.body}" target="_blank" style="color:inherit;text-decoration:none">${escapeHtml(name)}</a>
+            <div class="message-voice">
+                <audio src="${mediaUrl}" preload="metadata" controls></audio>
             </div>`;
     }
+    else if (type === 'audio') {
+        contentHtml = `
+            <div class="message-voice">
+                <audio src="${mediaUrl}" preload="metadata" controls></audio>
+            </div>`;
+        if (msg.caption) contentHtml += `<div class="message-content">${escapeHtml(msg.caption)}</div>`;
+    }
+    else if (type === 'document') {
+        const name = msg.caption || msg.body?.split('/').pop() || 'Document';
+        contentHtml = `
+            <div class="message-document">
+                <i class="fas fa-file-alt"></i>
+                <a href="${mediaUrl}" target="_blank" style="color:inherit;text-decoration:none">${escapeHtml(name)}</a>
+            </div>`;
+    }
+    else if (type === 'sticker') {
+        contentHtml = `<div class="message-media"><img src="${mediaUrl}" alt="Sticker" style="max-width:150px;max-height:150px"></div>`;
+    }
     else {
-        // Text
-        contentHtml = `<div class="message-content">${escapeHtml(msg.body || '')}</div>`;
+        // Text message
+        if (mediaUrl && (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://'))) {
+            // URL in body — could be a media link
+            contentHtml = `<div class="message-content"><a href="${escapeHtml(mediaUrl)}" target="_blank" style="color:#53bdeb">${escapeHtml(mediaUrl)}</a></div>`;
+        } else {
+            contentHtml = `<div class="message-content">${escapeHtml(msg.body || '')}</div>`;
+        }
     }
 
     const timeStr = formatTime(msg.time);
@@ -549,7 +674,7 @@ async function sendMessage() {
     elems.messageInput.style.height = 'auto'; // Reset size
 
     try {
-        const res = await fetch(`/api/chats/${currentChatId}/send`, {
+        const res = await fetch(`/api/chats/${encodeURIComponent(currentChatId)}/send`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ body: text })
@@ -618,7 +743,7 @@ async function sendFile() {
     elems.sendFileBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
     try {
-        const res = await fetch(`/api/chats/${currentChatId}/send-file`, {
+        const res = await fetch(`/api/chats/${encodeURIComponent(currentChatId)}/send-file`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

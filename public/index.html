@@ -65,6 +65,14 @@
                     </div>
                 </div>
 
+                <div class="tag-filters" id="tag-filters">
+                    <button class="tag-chip active" data-tag="all">Все</button>
+                    <button class="tag-chip" data-tag="переносит">Переносит</button>
+                    <button class="tag-chip" data-tag="висцелярная">Висцелярная</button>
+                    <button class="tag-chip" data-tag="проблемный">Проблемный</button>
+                    <button class="tag-chip" data-tag="отменяет">Отменяет</button>
+                </div>
+
                 <div class="chat-list" id="chat-list">
                     <!-- Chat items will be injected here -->
                     <div class="loading-spinner"><i class="fas fa-circle-notch fa-spin"></i></div>
@@ -83,7 +91,15 @@
                         </div>
                     </div>
                     <div class="chat-actions">
-                        <button title="Search"><i class="fas fa-search"></i></button>
+                        <div class="tag-manager-wrapper">
+                            <button id="tag-manage-btn" title="Manage Tags"><i class="fas fa-tags"></i></button>
+                            <div class="tag-dropdown hidden" id="tag-dropdown">
+                                <div class="tag-dropdown-item" data-tag="переносит">Переносит</div>
+                                <div class="tag-dropdown-item" data-tag="висцелярная">Висцелярная</div>
+                                <div class="tag-dropdown-item" data-tag="проблемный">Проблемный</div>
+                                <div class="tag-dropdown-item" data-tag="отменяет">Отменяет</div>
+                            </div>
+                        </div>
                         <button title="More options"><i class="fas fa-ellipsis-v"></i></button>
                     </div>
                 </header>

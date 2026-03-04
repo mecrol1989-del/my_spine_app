@@ -32,6 +32,16 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_messages_time ON messages(time);
 `);
 
+// Contact tags table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS contact_tags (
+    chat_id TEXT NOT NULL,
+    tag TEXT NOT NULL,
+    PRIMARY KEY (chat_id, tag)
+  );
+  CREATE INDEX IF NOT EXISTS idx_contact_tags_tag ON contact_tags(tag);
+`);
+
 module.exports = {
     // Save a new message
     saveMessage: (msg) => {
@@ -40,7 +50,7 @@ module.exports = {
                 id, chat_id, body, from_me, sender_name, time, type, caption, quoted_msg_id, raw_data
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
-        
+
         stmt.run(
             msg.id,
             msg.chatId,
@@ -58,7 +68,6 @@ module.exports = {
 
     // Get list of all chats (unique chat_ids with their latest message)
     getChats: () => {
-        // Query to get the latest message for each chat
         const stmt = db.prepare(`
             SELECT m1.* 
             FROM messages m1
@@ -69,11 +78,19 @@ module.exports = {
             ) m2 ON m1.chat_id = m2.chat_id AND m1.time = m2.max_time
             ORDER BY m1.time DESC
         `);
-        return stmt.all().map(row => ({
+        const chats = stmt.all().map(row => ({
             ...row,
             fromMe: row.from_me === 1,
             raw_data: JSON.parse(row.raw_data)
         }));
+
+        // Attach tags to each chat
+        const tagStmt = db.prepare('SELECT tag FROM contact_tags WHERE chat_id = ?');
+        chats.forEach(chat => {
+            chat.tags = tagStmt.all(chat.chat_id).map(r => r.tag);
+        });
+
+        return chats;
     },
 
     // Get messages for a specific chat
@@ -90,11 +107,37 @@ module.exports = {
             raw_data: JSON.parse(row.raw_data)
         }));
     },
-    
+
     // Check if a message exists
     messageExists: (id) => {
         const stmt = db.prepare('SELECT 1 FROM messages WHERE id = ?');
         const row = stmt.get(id);
         return !!row;
+    },
+
+    // Tag management
+    getTagsForChat: (chatId) => {
+        const stmt = db.prepare('SELECT tag FROM contact_tags WHERE chat_id = ?');
+        return stmt.all(chatId).map(r => r.tag);
+    },
+
+    addTag: (chatId, tag) => {
+        const stmt = db.prepare('INSERT OR IGNORE INTO contact_tags (chat_id, tag) VALUES (?, ?)');
+        stmt.run(chatId, tag);
+    },
+
+    removeTag: (chatId, tag) => {
+        const stmt = db.prepare('DELETE FROM contact_tags WHERE chat_id = ? AND tag = ?');
+        stmt.run(chatId, tag);
+    },
+
+    getChatsByTag: (tag) => {
+        const stmt = db.prepare('SELECT chat_id FROM contact_tags WHERE tag = ?');
+        return stmt.all(tag).map(r => r.chat_id);
+    },
+
+    getAllTags: () => {
+        const stmt = db.prepare('SELECT DISTINCT tag FROM contact_tags ORDER BY tag');
+        return stmt.all().map(r => r.tag);
     }
 };

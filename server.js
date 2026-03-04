@@ -311,6 +311,37 @@ app.post('/api/chats/:chatId/read', requireAuth, async (req, res) => {
 });
 
 // ==========================================
+// TAG MANAGEMENT
+// ==========================================
+
+app.get('/api/chats/:chatId/tags', requireAuth, (req, res) => {
+    try {
+        const tags = db.getTagsForChat(req.params.chatId);
+        res.json(tags);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/chats/:chatId/tags', requireAuth, (req, res) => {
+    try {
+        const { tag } = req.body;
+        db.addTag(req.params.chatId, tag);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete('/api/chats/:chatId/tags/:tag', requireAuth, (req, res) => {
+    try {
+        db.removeTag(req.params.chatId, req.params.tag);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+// ==========================================
 // WEBHOOK (From 1msg.io)
 // ==========================================
 
