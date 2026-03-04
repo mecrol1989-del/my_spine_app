@@ -354,35 +354,44 @@ app.post('/api/chats/:chatId/read', requireAuth, async (req, res) => {
 // Send voice message (base64 audio)
 app.post('/api/chats/:chatId/send-voice', requireAuth, async (req, res) => {
     const { chatId } = req.params;
-    const { audio } = req.body; // base64 audio data
+    const { audio } = req.body; // base64 audio data: data:audio/webm;base64,...
+
+    if (!audio) {
+        return res.status(400).json({ error: 'No audio data provided' });
+    }
+
+    console.log(`[Voice] Sending voice to ${chatId}, data length: ${audio.length}`);
 
     try {
         const payload = {
             chatId,
             body: audio,
-            filename: 'voice.ogg',
-            caption: ''
+            filename: 'voice.ogg'
         };
 
         const response = await apiRequest('/sendFile', 'POST', payload);
+        console.log('[Voice] API response:', JSON.stringify(response).substring(0, 300));
 
-        if (response.sent) {
+        if (response.sent || response.id) {
             const tempMsg = {
                 id: response.id || `voice_${Date.now()}`,
                 chatId: chatId,
-                body: audio,
+                body: '',
                 fromMe: true,
                 senderName: 'Me',
                 time: Math.floor(Date.now() / 1000),
                 type: 'ptt',
-                caption: ''
+                caption: 'Voice message'
             };
             db.saveMessage(tempMsg);
             notifyClients({ type: 'NEW_MESSAGE', data: tempMsg });
+            res.json({ sent: true, id: response.id });
+        } else {
+            console.error('[Voice] Send failed:', JSON.stringify(response));
+            res.json({ sent: false, error: response.message || response.error || 'Unknown error', details: response });
         }
-
-        res.json(response);
     } catch (e) {
+        console.error('[Voice] Exception:', e.message);
         res.status(500).json({ error: e.message });
     }
 });
