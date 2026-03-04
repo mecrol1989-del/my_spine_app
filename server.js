@@ -35,13 +35,54 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.set('trust proxy', 1); // Trust Render's proxy
+
+// SQLite session store (persists sessions across restarts)
+const sessionDb = require('better-sqlite3')(path.join(__dirname, 'data', 'sessions.db'));
+sessionDb.pragma('journal_mode = WAL');
+sessionDb.exec(`
+  CREATE TABLE IF NOT EXISTS sessions (
+    sid TEXT PRIMARY KEY,
+    sess TEXT NOT NULL,
+    expired INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_sessions_expired ON sessions(expired);
+`);
+
+// Clean up expired sessions on startup
+sessionDb.prepare('DELETE FROM sessions WHERE expired < ?').run(Date.now());
+
+const SqliteStore = {
+    __proto__: require('express-session').Store.prototype,
+    get(sid, cb) {
+        try {
+            const row = sessionDb.prepare('SELECT sess FROM sessions WHERE sid = ? AND expired > ?').get(sid, Date.now());
+            cb(null, row ? JSON.parse(row.sess) : null);
+        } catch (e) { cb(e); }
+    },
+    set(sid, sess, cb) {
+        try {
+            const maxAge = (sess.cookie && sess.cookie.maxAge) || 30 * 24 * 60 * 60 * 1000;
+            const expired = Date.now() + maxAge;
+            sessionDb.prepare('INSERT OR REPLACE INTO sessions (sid, sess, expired) VALUES (?, ?, ?)').run(sid, JSON.stringify(sess), expired);
+            cb && cb(null);
+        } catch (e) { cb && cb(e); }
+    },
+    destroy(sid, cb) {
+        try {
+            sessionDb.prepare('DELETE FROM sessions WHERE sid = ?').run(sid);
+            cb && cb(null);
+        } catch (e) { cb && cb(e); }
+    }
+};
+
 app.use(session({
+    store: SqliteStore,
     secret: process.env.SESSION_SECRET || 'super_secret',
     resave: false,
     saveUninitialized: false,
     cookie: {
         secure: false,
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     }
 }));
 
