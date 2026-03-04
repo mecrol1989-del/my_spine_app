@@ -351,6 +351,11 @@ async function sendPushNotification(title, body, chatId) {
     pushSubscriptions = pushSubscriptions.filter(s => !expired.includes(s));
 }
 
+// Health check (used by keep-alive ping)
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', uptime: process.uptime() });
+});
+
 app.post('/webhook', (req, res) => {
     const data = req.body;
 
@@ -459,4 +464,12 @@ app.listen(PORT, async () => {
     }, 30 * 1000); // every 30 seconds
 
     console.log('[Startup] Auto-sync enabled (every 30s)');
+
+    // Keep-alive: ping ourselves every 14 minutes to prevent Render from sleeping
+    const APP_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+    setInterval(() => {
+        fetch(`${APP_URL}/health`).catch(() => { });
+    }, 14 * 60 * 1000); // every 14 minutes
+
+    console.log(`[Startup] Keep-alive ping enabled (every 14 min) → ${APP_URL}/health`);
 });
