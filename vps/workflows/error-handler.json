@@ -1,0 +1,102 @@
+ubuntu@213.155.23.208's password: 
+{
+  "name": "Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// === ФОРМАТИРОВАНИЕ ОШИБКИ ===\n// Извлекаем информацию об ошибке из execution data\n\nconst execution = $json.execution || {};\nconst workflow = $json.workflow || {};\nconst lastNodeExecuted = execution.lastNodeExecuted || 'Unknown';\nconst errorMessage = execution.error?.message || 'Неизвестная ошибка';\nconst timestamp = new Date().toISOString();\n\nreturn [{\n  json: {\n    workflowName: workflow.name || 'Unknown Workflow',\n    lastNode: lastNodeExecuted,\n    errorMessage: errorMessage,\n    timestamp: timestamp,\n    executionId: execution.id || 'N/A'\n  }\n}];"
+      },
+      "id": "format-error",
+      "name": "Format Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $env.TELEGRAM_CHAT_ID || '' }}"
+            },
+            {
+              "name": "text",
+              "value": "=ð¨ <b>ОШИБКА В ТОРГОВОЙ СИСТЕМЕ</b>\n\nð Воркфлоу: <code>{{ $json.workflowName }}</code>\n⚙️ Нода: <code>{{ $json.lastNode }}</code>\n❌ Ошибка: {{ $json.errorMessage }}\n⏰ Время: {{ $json.timestamp }}\nð Execution: <code>{{ $json.executionId }}</code>"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "tg-error-alert",
+      "name": "TG: Error Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Format Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error": {
+      "main": [
+        [
+          {
+            "node": "TG: Error Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "trading"
+    },
+    {
+      "name": "error-handler"
+    }
+  ],
+  "triggerCount": 1,
+  "active": true,
+  "id": "101"
+}

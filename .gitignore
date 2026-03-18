@@ -3,3 +3,8 @@ data/
 .env
 server.log
 server.pid
+
+
+
+.nx/cache
+.nx/workspace-data

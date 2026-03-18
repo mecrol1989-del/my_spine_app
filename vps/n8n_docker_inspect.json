@@ -1,0 +1,275 @@
+[
+  {
+    "Id": "162e3d280014060b18dd71fa7fd0963d548dab518b579567a532d4821b2e3e9c",
+    "Name": "/n8n-n8n-1",
+    "State": {
+      "Status": "running",
+      "Running": true,
+      "Paused": false,
+      "Restarting": false,
+      "OOMKilled": false,
+      "Dead": false,
+      "Pid": 131987,
+      "ExitCode": 0,
+      "Error": "",
+      "StartedAt": "2026-03-18T10:34:59.616834666Z",
+      "FinishedAt": "2026-03-18T10:34:59.251651525Z"
+    },
+    "Mounts": [
+      {
+        "Type": "volume",
+        "Name": "n8n_n8n_data",
+        "Source": "/var/lib/docker/volumes/n8n_n8n_data/_data",
+        "Destination": "/home/node/.n8n",
+        "Driver": "local",
+        "Mode": "z",
+        "RW": true,
+        "Propagation": ""
+      }
+    ],
+    "Config": {
+      "Hostname": "162e3d280014",
+      "Domainname": "",
+      "User": "node",
+      "AttachStdin": false,
+      "AttachStdout": true,
+      "AttachStderr": true,
+      "ExposedPorts": {
+        "5678/tcp": {}
+      },
+      "Tty": false,
+      "OpenStdin": false,
+      "StdinOnce": false,
+      "Env": [
+        "BITGET_API_KEY=[REDACTED]",
+        "N8N_BASIC_AUTH_USER=admin",
+        "NODE_FUNCTION_ALLOW_EXTERNAL=*",
+        "N8N_SECURE_COOKIE=false",
+        "N8N_BASIC_AUTH_ACTIVE=true",
+        "BITGET_SECRET_KEY=[REDACTED]",
+        "TELEGRAM_CHAT_ID=543955549",
+        "N8N_PROTOCOL=http",
+        "TELEGRAM_BOT_TOKEN=[REDACTED]",
+        "N8N_BASIC_AUTH_PASSWORD=[REDACTED]",
+        "N8N_BLOCK_ENV_ACCESS_IN_NODE=false",
+        "N8N_HOST=213.155.23.208",
+        "ANTHROPIC_API_KEY=[REDACTED]",
+        "BITGET_PASSPHRASE=[REDACTED]",
+        "N8N_PORT=5678",
+        "NODE_VERSION=24.13.1",
+        "NPM_CONFIG_UPDATE_NOTIFIER=false",
+        "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "NODE_PATH=/opt/nodejs/node-v24.13.1/lib/node_modules",
+        "NODE_ENV=production",
+        "N8N_RELEASE_TYPE=stable",
+        "SHELL=/bin/sh"
+      ],
+      "Cmd": null,
+      "Image": "docker.n8n.io/n8nio/n8n",
+      "Volumes": null,
+      "WorkingDir": "/home/node",
+      "Entrypoint": [
+        "tini",
+        "--",
+        "/docker-entrypoint.sh"
+      ],
+      "OnBuild": null,
+      "Labels": {
+        "com.docker.compose.config-hash": "d0bbb0ec4488565b5c3e5d81307811a19b68993a1a574c5613f9416d4d938066",
+        "com.docker.compose.container-number": "1",
+        "com.docker.compose.depends_on": "",
+        "com.docker.compose.image": "sha256:34629fe353b8bf4a7091c8efd9a4d7b1e5f827b177e23390f8b418ee541b854a",
+        "com.docker.compose.oneoff": "False",
+        "com.docker.compose.project": "n8n",
+        "com.docker.compose.project.config_files": "/root/n8n/docker-compose.yml",
+        "com.docker.compose.project.working_dir": "/root/n8n",
+        "com.docker.compose.service": "n8n",
+        "com.docker.compose.version": "2.24.5",
+        "com.docker.dhi.chain-id": "sha256:944769358dd7f77ef0ea2ae34d07317f84e07d5449adfdb9f763ac479326f348",
+        "com.docker.dhi.compliance": "cis",
+        "com.docker.dhi.created": "2026-02-20T09:02:53Z",
+        "com.docker.dhi.date.end-of-life": "2028-04-30",
+        "com.docker.dhi.date.release": "2025-05-06",
+        "com.docker.dhi.definition": "image/node/alpine-3.22/24-dev",
+        "com.docker.dhi.distro": "alpine-3.22",
+        "com.docker.dhi.flavor": "",
+        "com.docker.dhi.name": "dhi/node",
+        "com.docker.dhi.package-manager": "apk",
+        "com.docker.dhi.shell": "busybox",
+        "com.docker.dhi.title": "Node.js 24.x (dev)",
+        "com.docker.dhi.url": "https://dhi.io/catalog/node",
+        "com.docker.dhi.variant": "dev",
+        "com.docker.dhi.version": "24.13.1-alpine3.22-dev",
+        "org.opencontainers.image.description": "Workflow Automation Tool",
+        "org.opencontainers.image.source": "https://github.com/n8n-io/n8n",
+        "org.opencontainers.image.title": "n8n",
+        "org.opencontainers.image.url": "https://n8n.io",
+        "org.opencontainers.image.version": "2.10.4"
+      }
+    },
+    "NetworkSettings": {
+      "Bridge": "",
+      "SandboxID": "48391a72dcf2540fd6dad3c6dbefaa8c8cf3eaf7cbd558695cd0bf5c95784f13",
+      "SandboxKey": "/var/run/docker/netns/48391a72dcf2",
+      "Ports": {
+        "5678/tcp": [
+          {
+            "HostIp": "0.0.0.0",
+            "HostPort": "5678"
+          },
+          {
+            "HostIp": "::",
+            "HostPort": "5678"
+          }
+        ]
+      },
+      "HairpinMode": false,
+      "LinkLocalIPv6Address": "",
+      "LinkLocalIPv6PrefixLen": 0,
+      "SecondaryIPAddresses": null,
+      "SecondaryIPv6Addresses": null,
+      "EndpointID": "",
+      "Gateway": "",
+      "GlobalIPv6Address": "",
+      "GlobalIPv6PrefixLen": 0,
+      "IPAddress": "",
+      "IPPrefixLen": 0,
+      "IPv6Gateway": "",
+      "MacAddress": "",
+      "Networks": {
+        "n8n_default": {
+          "IPAMConfig": null,
+          "Links": null,
+          "Aliases": [
+            "n8n-n8n-1",
+            "n8n"
+          ],
+          "MacAddress": "8a:a1:5a:48:87:e2",
+          "DriverOpts": null,
+          "GwPriority": 0,
+          "NetworkID": "530e2b740c9accf51e16892b3386987e52984684af43b14a5e63df9f15cbe79f",
+          "EndpointID": "e23c5b619bef86806ad80868b9f51c14187a95044b2bbb3de68172d809a079f7",
+          "Gateway": "172.18.0.1",
+          "IPAddress": "172.18.0.2",
+          "IPPrefixLen": 16,
+          "IPv6Gateway": "",
+          "GlobalIPv6Address": "",
+          "GlobalIPv6PrefixLen": 0,
+          "DNSNames": [
+            "n8n-n8n-1",
+            "n8n",
+            "162e3d280014"
+          ]
+        }
+      }
+    },
+    "HostConfig": {
+      "Binds": null,
+      "ContainerIDFile": "",
+      "LogConfig": {
+        "Type": "json-file",
+        "Config": {}
+      },
+      "NetworkMode": "n8n_default",
+      "PortBindings": {
+        "5678/tcp": [
+          {
+            "HostIp": "",
+            "HostPort": "5678"
+          }
+        ]
+      },
+      "RestartPolicy": {
+        "Name": "always",
+        "MaximumRetryCount": 0
+      },
+      "AutoRemove": false,
+      "VolumeDriver": "",
+      "VolumesFrom": null,
+      "ConsoleSize": [
+        0,
+        0
+      ],
+      "CapAdd": null,
+      "CapDrop": null,
+      "CgroupnsMode": "private",
+      "Dns": null,
+      "DnsOptions": null,
+      "DnsSearch": null,
+      "ExtraHosts": [],
+      "GroupAdd": null,
+      "IpcMode": "private",
+      "Cgroup": "",
+      "Links": null,
+      "OomScoreAdj": 0,
+      "PidMode": "",
+      "Privileged": false,
+      "PublishAllPorts": false,
+      "ReadonlyRootfs": false,
+      "SecurityOpt": null,
+      "UTSMode": "",
+      "UsernsMode": "",
+      "ShmSize": 67108864,
+      "Runtime": "runc",
+      "Isolation": "",
+      "CpuShares": 0,
+      "Memory": 0,
+      "NanoCpus": 0,
+      "CgroupParent": "",
+      "BlkioWeight": 0,
+      "BlkioWeightDevice": null,
+      "BlkioDeviceReadBps": null,
+      "BlkioDeviceWriteBps": null,
+      "BlkioDeviceReadIOps": null,
+      "BlkioDeviceWriteIOps": null,
+      "CpuPeriod": 0,
+      "CpuQuota": 0,
+      "CpuRealtimePeriod": 0,
+      "CpuRealtimeRuntime": 0,
+      "CpusetCpus": "",
+      "CpusetMems": "",
+      "Devices": null,
+      "DeviceCgroupRules": null,
+      "DeviceRequests": null,
+      "MemoryReservation": 0,
+      "MemorySwap": 0,
+      "MemorySwappiness": null,
+      "OomKillDisable": null,
+      "PidsLimit": null,
+      "Ulimits": null,
+      "CpuCount": 0,
+      "CpuPercent": 0,
+      "IOMaximumIOps": 0,
+      "IOMaximumBandwidth": 0,
+      "Mounts": [
+        {
+          "Type": "volume",
+          "Source": "n8n_n8n_data",
+          "Target": "/home/node/.n8n",
+          "VolumeOptions": {}
+        }
+      ],
+      "MaskedPaths": [
+        "/proc/asound",
+        "/proc/acpi",
+        "/proc/interrupts",
+        "/proc/kcore",
+        "/proc/keys",
+        "/proc/latency_stats",
+        "/proc/timer_list",
+        "/proc/timer_stats",
+        "/proc/sched_debug",
+        "/proc/scsi",
+        "/sys/firmware",
+        "/sys/devices/virtual/powercap"
+      ],
+      "ReadonlyPaths": [
+        "/proc/bus",
+        "/proc/fs",
+        "/proc/irq",
+        "/proc/sys",
+        "/proc/sysrq-trigger"
+      ]
+    }
+  }
+]

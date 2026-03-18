@@ -1,0 +1,176 @@
+{
+  "meta": {
+    "lastTouchedVersion": "2026.3.13",
+    "lastTouchedAt": "2026-03-15T09:41:37.561Z"
+  },
+  "wizard": {
+    "lastRunAt": "2026-03-15T09:41:37.495Z",
+    "lastRunVersion": "2026.3.13",
+    "lastRunCommand": "doctor",
+    "lastRunMode": "local"
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "openai/gpt-4o"
+      },
+      "models": {
+        "anthropic/claude-3-5-sonnet-latest": {
+          "params": {
+            "cacheRetention": "short",
+            "thinking": true
+          }
+        },
+        "openai/o1": {
+          "params": {
+            "reasoning_effort": "high"
+          }
+        },
+        "anthropic/claude-3-5-sonnet-20241022": {},
+        "openai/gpt-4o": {}
+      },
+      "workspace": "/home/ubuntu/.openclaw/workspace",
+      "contextPruning": {
+        "mode": "cache-ttl",
+        "ttl": "1h"
+      },
+      "compaction": {
+        "mode": "safeguard"
+      },
+      "heartbeat": {
+        "every": "30m"
+      },
+      "maxConcurrent": 4,
+      "subagents": {
+        "maxConcurrent": 8
+      }
+    },
+    "list": [
+      {
+        "id": "main",
+        "skills": [
+          "bitget-trading"
+        ],
+        "model": "anthropic/claude-sonnet-4-20250514"
+      },
+      {
+        "id": "market_analyst",
+        "name": "market_analyst",
+        "workspace": "/home/ubuntu/.openclaw/agents/market_analyst/workspace",
+        "agentDir": "/home/ubuntu/.openclaw/agents/market_analyst/agent",
+        "model": "openai/gpt-4o",
+        "skills": [
+          "bitget-trading"
+        ]
+      },
+      {
+        "id": "risk_manager",
+        "name": "risk_manager",
+        "workspace": "/home/ubuntu/.openclaw/agents/risk_manager/workspace",
+        "agentDir": "/home/ubuntu/.openclaw/agents/risk_manager/agent",
+        "model": "openai/gpt-4o"
+      },
+      {
+        "id": "trade_executor",
+        "name": "trade_executor",
+        "workspace": "/home/ubuntu/.openclaw/agents/trade_executor/workspace",
+        "agentDir": "/home/ubuntu/.openclaw/agents/trade_executor/agent",
+        "model": "anthropic/claude-sonnet-4-20250514"
+      },
+      {
+        "id": "position_monitor",
+        "name": "position_monitor",
+        "workspace": "/home/ubuntu/.openclaw/agents/position_monitor/workspace",
+        "agentDir": "/home/ubuntu/.openclaw/agents/position_monitor/agent",
+        "model": "openai/gpt-4o"
+      },
+      {
+        "id": "trading_orchestrator",
+        "name": "trading_orchestrator",
+        "workspace": "/home/ubuntu/.openclaw/agents/trading_orchestrator/workspace",
+        "agentDir": "/home/ubuntu/.openclaw/agents/trading_orchestrator/agent",
+        "model": "anthropic/claude-opus-4-6",
+        "skills": [
+          "bitget-trading"
+        ]
+      },
+      {
+        "id": "signal_generator",
+        "name": "signal_generator",
+        "workspace": "/home/ubuntu/.openclaw/agents/signal_generator/workspace",
+        "agentDir": "/home/ubuntu/.openclaw/agents/signal_generator/agent",
+        "model": "anthropic/claude-sonnet-4-20250514"
+      }
+    ]
+  },
+  "tools": {
+    "profile": "coding"
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto",
+    "restart": true,
+    "ownerDisplay": "raw"
+  },
+  "session": {
+    "dmScope": "per-channel-peer"
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "dmPolicy": "allowlist",
+      "botToken": "[REDACTED]",
+      "allowFrom": [
+        "543955549"
+      ],
+      "groupAllowFrom": [
+        "543955549"
+      ],
+      "groupPolicy": "allowlist",
+      "streaming": "partial"
+    }
+  },
+  "gateway": {
+    "port": 18789,
+    "mode": "local",
+    "bind": "lan",
+    "controlUi": {
+      "allowedOrigins": [
+        "http://localhost:18789",
+        "http://127.0.0.1:18789"
+      ]
+    },
+    "auth": {
+      "mode": "token",
+      "token": "00d5056f76b718f2b26c8c95e0ae9069f079e6095a63065f"
+    },
+    "tailscale": {
+      "mode": "off",
+      "resetOnExit": false
+    }
+  },
+  "skills": {
+    "install": {
+      "nodeManager": "npm"
+    }
+  },
+  "plugins": {
+    "entries": {
+      "telegram": {
+        "enabled": true
+      },
+      "openclaw-bitget-trading": {
+        "enabled": true
+      }
+    },
+    "installs": {
+      "openclaw-bitget-trading": {
+        "source": "path",
+        "sourcePath": "/tmp/openclaw-bitget-plugin",
+        "installPath": "/home/ubuntu/.openclaw/extensions/openclaw-bitget-trading",
+        "version": "1.0.0",
+        "installedAt": "2026-03-15T09:25:33.758Z"
+      }
+    }
+  }
+}

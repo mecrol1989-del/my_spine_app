@@ -1,0 +1,1884 @@
+[
+  {
+    "updatedAt": "2026-03-14T18:48:12.000Z",
+    "createdAt": "2026-03-09T14:18:57.951Z",
+    "id": "instagramprofile",
+    "name": "Instagram_Profile_Analyst",
+    "description": null,
+    "active": false,
+    "isArchived": true,
+    "nodes": [
+      {
+        "parameters": {
+          "path": "lovableinstagram",
+          "httpMethod": "POST",
+          "responseMode": "lastNode",
+          "options": {
+            "cors": true
+          }
+        },
+        "id": "webhook-node",
+        "name": "Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          250,
+          300
+        ],
+        "webhookId": "lovableinstagram-webhook-id"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "string": [
+              {
+                "value1": "={{$json.body.username}}",
+                "operation": "isNotEmpty"
+              },
+              {
+                "value1": "={{$json.body.goal}}",
+                "operation": "isNotEmpty"
+              },
+              {
+                "value1": "={{$json.body.niche}}",
+                "operation": "isNotEmpty"
+              }
+            ]
+          }
+        },
+        "id": "if-node",
+        "name": "Validate Input",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 1,
+        "position": [
+          450,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "values": {
+            "boolean": [
+              {
+                "name": "success",
+                "value": false
+              }
+            ],
+            "string": [
+              {
+                "name": "error",
+                "value": "Missing username, goal, or niche."
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "error-node",
+        "name": "Validation Error",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 1,
+        "position": [
+          650,
+          500
+        ]
+      },
+      {
+        "parameters": {
+          "url": "='https://www.instagram.com/' + $node['Webhook'].json.body.username + '/'",
+          "options": {
+            "allowUnauthorizedCerts": true,
+            "response": {
+              "response": {
+                "responseFormat": "text"
+              }
+            }
+          }
+        },
+        "id": "http-scraper",
+        "name": "Fetch Profile",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 3,
+        "position": [
+          650,
+          300
+        ],
+        "continueOnFail": true
+      },
+      {
+        "parameters": {
+          "values": {
+            "string": [
+              {
+                "name": "html_content",
+                "value": "={{ $json.data || '' }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "extract-html",
+        "name": "Extract Metadata",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 1,
+        "position": [
+          850,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "model": "gpt-4o-mini",
+          "messages": {
+            "messageValues": [
+              {
+                "role": "system",
+                "content": "You are a senior Instagram AI analyst. Your task is to output a strictly structured JSON analysis of an Instagram profile. Based on the scraped HTML snippet (if available) and the user's username, niche, and goal.\n\nThe JSON must follow this exact structure:\n{\n  \"success\": true,\n  \"input\": {\n    \"username\": \"string\",\n    \"goal\": \"string\",\n    \"niche\": \"string\"\n  },\n  \"profile_summary\": {\n    \"name\": \"string (guess or extract)\",\n    \"bio\": \"string\",\n    \"category\": \"string\",\n    \"followers\": \"string\",\n    \"posts\": \"string\",\n    \"overall_assessment\": \"string\"\n  },\n  \"audit\": {\n    \"positioning\": {\n      \"score\": 0,\n      \"summary\": \"string\",\n      \"recommendations\": [\"string\"]\n    },\n    \"content\": {\n      \"score\": 0,\n      \"summary\": \"string\",\n      \"recommendations\": [\"string\"]\n    },\n    \"visual_branding\": {\n      \"score\": 0,\n      \"summary\": \"string\",\n      \"recommendations\": [\"string\"]\n    },\n    \"audience_fit\": {\n      \"score\": 0,\n      \"summary\": \"string\",\n      \"recommendations\": [\"string\"]\n    },\n    \"growth_potential\": {\n      \"score\": 0,\n      \"summary\": \"string\",\n      \"recommendations\": [\"string\"]\n    }\n  },\n  \"priority_actions\": [\"string\"],\n  \"final_verdict\": \"string\",\n  \"generated_at\": \"ISO Date\"\n}"
+              },
+              {
+                "role": "user",
+                "content": "='Input Data:\\nUsername: ' + $node[\"Webhook\"].json[\"body\"][\"username\"] + '\\nGoal: ' + $node[\"Webhook\"].json[\"body\"][\"goal\"] + '\\nNiche: ' + $node[\"Webhook\"].json[\"body\"][\"niche\"] + '\\nProfile HTML context (might be login wall or full): ' + $json[\"html_content\"]"
+              }
+            ]
+          },
+          "options": {
+            "responseFormat": "jsonObject"
+          }
+        },
+        "id": "openai-node",
+        "name": "Audit Profile (OpenAI)",
+        "type": "@n8n/n8n-nodes-langchain.openAi",
+        "typeVersion": 1,
+        "position": [
+          1050,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "try {\n  return JSON.parse(item.message.content);\n} catch (e) {\n  return { success: false, error: \"AI failed to produce valid JSON\", raw: item.message.content };\n}"
+        },
+        "id": "parse-json",
+        "name": "Parse JSON",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1250,
+          300
+        ]
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "Validate Input",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate Input": {
+        "main": [
+          [
+            {
+              "node": "Fetch Profile",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Validation Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Profile": {
+        "main": [
+          [
+            {
+              "node": "Extract Metadata",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract Metadata": {
+        "main": [
+          [
+            {
+              "node": "Audit Profile (OpenAI)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Audit Profile (OpenAI)": {
+        "main": [
+          [
+            {
+              "node": "Parse JSON",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": null,
+    "pinData": null,
+    "versionId": "349fb737-99d0-47db-aa65-8e49a6c6121c",
+    "activeVersionId": null,
+    "versionCounter": 4,
+    "triggerCount": 0,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-03-09T14:18:57.960Z",
+        "createdAt": "2026-03-09T14:18:57.960Z",
+        "role": "workflow:owner",
+        "workflowId": "instagramprofile",
+        "projectId": "2IxyGF1TauHheEqR",
+        "project": {
+          "updatedAt": "2026-03-14T14:44:57.875Z",
+          "createdAt": "2026-03-09T12:09:46.279Z",
+          "id": "2IxyGF1TauHheEqR",
+          "name": "Yaroslav Mishin <mecrol1989@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "creatorId": "e68761fa-96f9-4fe3-bc27-73f2a8fa4618"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  },
+  {
+    "updatedAt": "2026-03-14T14:46:22.000Z",
+    "createdAt": "2026-03-09T16:12:45.704Z",
+    "id": "HxWwrCFKGAOfCev3",
+    "name": "Instagram_Profile_Analyst",
+    "description": null,
+    "active": false,
+    "isArchived": true,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "lovableinstagram",
+          "responseMode": "lastNode",
+          "options": {}
+        },
+        "id": "b2fcbf16-3c9f-48f4-82a8-5ec7cee5e90a",
+        "name": "Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          0,
+          0
+        ],
+        "webhookId": "2314eb4c-4799-4452-8409-85d7f5210889"
+      },
+      {
+        "parameters": {
+          "url": "='https://www.instagram.com/' + $json.body.username + '/'",
+          "options": {}
+        },
+        "id": "3fd88505-8212-4f5a-a0ee-102bb2cd3b78",
+        "name": "Fetch Profile",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 1,
+        "position": [
+          208,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "chat",
+          "operation": "create",
+          "requestOptions": {}
+        },
+        "id": "2f723406-4874-499e-bf9f-b40211f51d7d",
+        "name": "Audit Profile (OpenAI)",
+        "type": "n8n-nodes-base.openAi",
+        "typeVersion": 1,
+        "position": [
+          400,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "try {\n  return JSON.parse(item.message.content);\n} catch(e) {\n  return { success: false, error: item.message.content };\n}"
+        },
+        "id": "d8b08517-caa6-411d-bc64-9addbca6fec5",
+        "name": "Parse JSON",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 1,
+        "position": [
+          608,
+          0
+        ]
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "Fetch Profile",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Profile": {
+        "main": [
+          [
+            {
+              "node": "Audit Profile (OpenAI)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Audit Profile (OpenAI)": {
+        "main": [
+          [
+            {
+              "node": "Parse JSON",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "binaryMode": "separate",
+      "availableInMCP": false
+    },
+    "staticData": null,
+    "meta": null,
+    "pinData": {},
+    "versionId": "3b17b150-3000-483a-a104-982c69516c5f",
+    "activeVersionId": null,
+    "versionCounter": 2,
+    "triggerCount": 0,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-03-09T16:12:45.710Z",
+        "createdAt": "2026-03-09T16:12:45.710Z",
+        "role": "workflow:owner",
+        "workflowId": "HxWwrCFKGAOfCev3",
+        "projectId": "2IxyGF1TauHheEqR",
+        "project": {
+          "updatedAt": "2026-03-14T14:44:57.875Z",
+          "createdAt": "2026-03-09T12:09:46.279Z",
+          "id": "2IxyGF1TauHheEqR",
+          "name": "Yaroslav Mishin <mecrol1989@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "creatorId": "e68761fa-96f9-4fe3-bc27-73f2a8fa4618"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  },
+  {
+    "updatedAt": "2026-03-14T14:22:51.272Z",
+    "createdAt": "2026-03-14T14:22:51.272Z",
+    "id": "100",
+    "name": "AI Trading System — BTC ETH SOL BNB",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "minutes",
+                "minutesInterval": 15
+              }
+            ]
+          }
+        },
+        "id": "schedule-trigger",
+        "name": "Schedule Trigger (15m)",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          220,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// === CIRCUIT BREAKER ===\n// Проверяем дневной PnL из статических данных воркфлоу\n// Если убыток превышает $50 за день — останавливаем торги\n\nconst staticData = $getWorkflowStaticData('global');\nconst today = new Date().toISOString().slice(0, 10);\n\n// Сброс PnL при смене дня\nif (staticData.pnlDate !== today) {\n  staticData.pnlDate = today;\n  staticData.dailyPnL = 0;\n  staticData.tradesCount = 0;\n}\n\nconst dailyPnL = staticData.dailyPnL || 0;\nconst tradesCount = staticData.tradesCount || 0;\n\nif (dailyPnL < -50) {\n  // Circuit breaker сработал — остановка торгов\n  return [{\n    json: {\n      circuitBreaker: true,\n      dailyPnL: dailyPnL,\n      tradesCount: tradesCount,\n      message: `ð CIRCUIT BREAKER: Дневной убыток $${Math.abs(dailyPnL).toFixed(2)} превысил лимит $50. Торги остановлены.`\n    }\n  }];\n}\n\n// Всё ОК — передаём дальше\nreturn [{\n  json: {\n    circuitBreaker: false,\n    dailyPnL: dailyPnL,\n    tradesCount: tradesCount\n  }\n}];"
+        },
+        "id": "circuit-breaker",
+        "name": "Circuit Breaker",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          440,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": ""
+            },
+            "conditions": [
+              {
+                "id": "cb-check",
+                "leftValue": "={{ $json.circuitBreaker }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ]
+          }
+        },
+        "id": "if-circuit-breaker",
+        "name": "IF Circuit Breaker",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          660,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "chat_id",
+                "value": "={{ $env.TELEGRAM_CHAT_ID || '' }}"
+              },
+              {
+                "name": "text",
+                "value": "={{ $json.message }}"
+              },
+              {
+                "name": "parse_mode",
+                "value": "HTML"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "tg-circuit-breaker",
+        "name": "TG: Circuit Breaker Alert",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          880,
+          180
+        ]
+      },
+      {
+        "parameters": {
+          "values": {
+            "object": [
+              {
+                "name": "pairs",
+                "value": "=[{\"symbol\":\"BTCUSDT\"},{\"symbol\":\"ETHUSDT\"},{\"symbol\":\"SOLUSDT\"},{\"symbol\":\"BNBUSDT\"}]"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "set-pairs",
+        "name": "Set Trading Pairs",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          880,
+          420
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Разворачиваем массив пар в отдельные items для обработки в цикле\nconst pairs = JSON.parse($json.pairs);\nreturn pairs.map(p => ({ json: p }));"
+        },
+        "id": "split-pairs",
+        "name": "Split Pairs",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1100,
+          420
+        ]
+      },
+      {
+        "parameters": {
+          "batchSize": 1,
+          "options": {}
+        },
+        "id": "loop-pairs",
+        "name": "Loop Over Pairs",
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          1320,
+          420
+        ]
+      },
+      {
+        "parameters": {
+          "url": "=https://api.bitget.com/api/v2/spot/market/candles?symbol={{ $json.symbol }}&granularity=15min&limit=50",
+          "options": {
+            "timeout": 10000
+          }
+        },
+        "id": "http-candles-15m",
+        "name": "Bitget 15M Candles",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1540,
+          200
+        ]
+      },
+      {
+        "parameters": {
+          "url": "=https://api.bitget.com/api/v2/spot/market/candles?symbol={{ $('Loop Over Pairs').item.json.symbol }}&granularity=1Hutc&limit=50",
+          "options": {
+            "timeout": 10000
+          }
+        },
+        "id": "http-candles-1h",
+        "name": "Bitget 1H Candles",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1540,
+          420
+        ]
+      },
+      {
+        "parameters": {
+          "url": "=https://api.bitget.com/api/v2/spot/market/candles?symbol={{ $('Loop Over Pairs').item.json.symbol }}&granularity=4Hutc&limit=200",
+          "options": {
+            "timeout": 10000
+          }
+        },
+        "id": "http-candles-4h",
+        "name": "Bitget 4H Candles",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1540,
+          640
+        ]
+      },
+      {
+        "parameters": {
+          "mode": "combine",
+          "mergeByPosition": "combine",
+          "options": {}
+        },
+        "id": "merge-candles",
+        "name": "Merge Candles",
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3,
+        "position": [
+          1760,
+          420
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// === MTF ANALYZER ===\n// Мульти-таймфрейм анализ с RSI, EMA, MACD, ATR\n// Score-based система генерации торговых сигналов\n\nconst symbol = $('Loop Over Pairs').item.json.symbol;\n\n// Утилиты расчёта индикаторов\nfunction parseCandles(raw) {\n  if (!raw || !Array.isArray(raw)) return [];\n  return raw.map(c => ({\n    ts: parseInt(c[0]),\n    o: parseFloat(c[1]),\n    h: parseFloat(c[2]),\n    l: parseFloat(c[3]),\n    c: parseFloat(c[4]),\n    v: parseFloat(c[5])\n  })).sort((a, b) => a.ts - b.ts);\n}\n\nfunction calcRSI(closes, period = 14) {\n  if (closes.length < period + 1) return 50;\n  let gains = 0, losses = 0;\n  for (let i = closes.length - period; i < closes.length; i++) {\n    const diff = closes[i] - closes[i - 1];\n    if (diff > 0) gains += diff;\n    else losses += Math.abs(diff);\n  }\n  const avgGain = gains / period;\n  const avgLoss = losses / period;\n  if (avgLoss === 0) return 100;\n  const rs = avgGain / avgLoss;\n  return 100 - (100 / (1 + rs));\n}\n\nfunction calcEMA(closes, period) {\n  if (closes.length < period) return closes[closes.length - 1];\n  const k = 2 / (period + 1);\n  let ema = closes.slice(0, period).reduce((a, b) => a + b) / period;\n  for (let i = period; i < closes.length; i++) {\n    ema = closes[i] * k + ema * (1 - k);\n  }\n  return ema;\n}\n\nfunction calcMACD(closes) {\n  const ema12 = calcEMA(closes, 12);\n  const ema26 = calcEMA(closes, 26);\n  const macdLine = ema12 - ema26;\n  // Сигнальная линия — EMA(9) от MACD (упрощённая)\n  const signal = macdLine * 0.8; // Приближение\n  const histogram = macdLine - signal;\n  return { macdLine, signal, histogram };\n}\n\nfunction calcATR(candles, period = 14) {\n  if (candles.length < period + 1) return 0;\n  let trSum = 0;\n  for (let i = candles.length - period; i < candles.length; i++) {\n    const tr = Math.max(\n      candles[i].h - candles[i].l,\n      Math.abs(candles[i].h - candles[i - 1].c),\n      Math.abs(candles[i].l - candles[i - 1].c)\n    );\n    trSum += tr;\n  }\n  return trSum / period;\n}\n\n// Парсим данные со всех трёх таймфреймов\nconst items = $input.all();\nlet raw15m = [], raw1h = [], raw4h = [];\n\ntry {\n  // Данные приходят в разном формате — обрабатываем оба варианта\n  const d0 = items[0]?.json?.data || items[0]?.json || [];\n  const d1 = items[1]?.json?.data || items[1]?.json || [];\n  const d2 = items[2]?.json?.data || items[2]?.json || [];\n  raw15m = Array.isArray(d0) ? d0 : [];\n  raw1h = Array.isArray(d1) ? d1 : [];\n  raw4h = Array.isArray(d2) ? d2 : [];\n} catch(e) {\n  return [{ json: { signal: 'HOLD', reason: 'Ошибка парсинга данных: ' + e.message, symbol } }];\n}\n\nconst candles15m = parseCandles(raw15m);\nconst candles1h = parseCandles(raw1h);\nconst candles4h = parseCandles(raw4h);\n\nif (candles15m.length < 20 || candles1h.length < 20 || candles4h.length < 50) {\n  return [{ json: { signal: 'HOLD', reason: 'Недостаточно данных для анализа', symbol } }];\n}\n\n// Текущая цена\nconst price = candles15m[candles15m.length - 1].c;\n\n// RSI для каждого таймфрейма\nconst closes15m = candles15m.map(c => c.c);\nconst closes1h = candles1h.map(c => c.c);\nconst closes4h = candles4h.map(c => c.c);\n\nconst rsi15m = calcRSI(closes15m, 14);\nconst rsi1h = calcRSI(closes1h, 14);\nconst rsi4h = calcRSI(closes4h, 14);\n\n// EMA(50) и EMA(200) для 4H\nconst ema50_4h = calcEMA(closes4h, 50);\nconst ema200_4h = calcEMA(closes4h, 200);\n\n// MACD для 15M\nconst macd15m = calcMACD(closes15m);\n\n// ATR(14) для 15M\nconst atr15m = calcATR(candles15m, 14);\n\n// === SCORE-BASED LOGIC ===\nlet bullScore = 0;\nlet bearScore = 0;\nlet reasons = [];\n\n// 4H тренд: цена выше EMA200 → бычий (+3)\nif (price > ema200_4h) {\n  bullScore += 3;\n  reasons.push('4H: Цена > EMA200 (бычий тренд)');\n} else {\n  bearScore += 3;\n  reasons.push('4H: Цена < EMA200 (медвежий тренд)');\n}\n\n// 4H: цена выше EMA50 → дополнительный бычий сигнал (+1)\nif (price > ema50_4h) {\n  bullScore += 1;\n  reasons.push('4H: Цена > EMA50');\n} else {\n  bearScore += 1;\n  reasons.push('4H: Цена < EMA50');\n}\n\n// 15M RSI перепроданность → BUY сигнал (+2)\nif (rsi15m < 30) {\n  bullScore += 2;\n  reasons.push('15M: RSI < 30 (перепроданность)');\n}\n\n// 15M RSI перекупленность → SELL сигнал (+2)\nif (rsi15m > 70) {\n  bearScore += 2;\n  reasons.push('15M: RSI > 70 (перекупленность)');\n}\n\n// 1H RSI > 65 → блокировка покупки\nlet buyBlocked = false;\nif (rsi1h > 65) {\n  buyBlocked = true;\n  reasons.push('1H: RSI > 65 (BUY заблокирован)');\n}\n\n// MACD гистограмма положительная → бычий (+1)\nif (macd15m.histogram > 0) {\n  bullScore += 1;\n  reasons.push('15M: MACD гистограмма > 0');\n} else {\n  bearScore += 1;\n  reasons.push('15M: MACD гистограмма < 0');\n}\n\n// 4H RSI выше 60 → слабый бычий (+1)\nif (rsi4h > 50 && rsi4h < 70) {\n  bullScore += 1;\n}\nif (rsi4h < 40) {\n  bearScore += 1;\n}\n\n// Определяем сигнал\nlet signal = 'HOLD';\nlet confidence = 0;\nconst maxScore = 8; // Максимально возможный балл\n\nif (bullScore > bearScore && bullScore >= 4 && !buyBlocked) {\n  signal = 'BUY';\n  confidence = Math.min(Math.round((bullScore / maxScore) * 100), 95);\n} else if (bearScore > bullScore && bearScore >= 4) {\n  signal = 'SELL';\n  confidence = Math.min(Math.round((bearScore / maxScore) * 100), 95);\n} else {\n  signal = 'HOLD';\n  confidence = 0;\n}\n\n// Стоп-лосс и тейк-профит на основе ATR\nconst stopLoss = signal === 'BUY'\n  ? parseFloat((price - atr15m * 2).toFixed(6))\n  : parseFloat((price + atr15m * 2).toFixed(6));\n\nconst takeProfit = signal === 'BUY'\n  ? parseFloat((price + atr15m * 4).toFixed(6))\n  : parseFloat((price - atr15m * 4).toFixed(6));\n\nreturn [{\n  json: {\n    symbol,\n    signal,\n    confidence,\n    price,\n    stopLoss,\n    takeProfit,\n    atr: parseFloat(atr15m.toFixed(6)),\n    rsi15m: parseFloat(rsi15m.toFixed(2)),\n    rsi1h: parseFloat(rsi1h.toFixed(2)),\n    rsi4h: parseFloat(rsi4h.toFixed(2)),\n    ema50_4h: parseFloat(ema50_4h.toFixed(6)),\n    ema200_4h: parseFloat(ema200_4h.toFixed(6)),\n    macdHistogram: parseFloat(macd15m.histogram.toFixed(6)),\n    bullScore,\n    bearScore,\n    buyBlocked,\n    reasons,\n    timestamp: new Date().toISOString()\n  }\n}];"
+        },
+        "id": "mtf-analyzer",
+        "name": "MTF Analyzer",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1980,
+          420
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": ""
+            },
+            "conditions": [
+              {
+                "id": "sig-not-hold",
+                "leftValue": "={{ $json.signal }}",
+                "rightValue": "HOLD",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEquals"
+                }
+              },
+              {
+                "id": "conf-gt-60",
+                "leftValue": "={{ $json.confidence }}",
+                "rightValue": 60,
+                "operator": {
+                  "type": "number",
+                  "operation": "gt"
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        },
+        "id": "if-signal",
+        "name": "IF Signal Active",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          2200,
+          420
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// === ПРОВЕРКА ОТКРЫТЫХ ПОЗИЦИЙ ===\n// Bitget v2 API: получить открытые ордера\n// Используем HMAC-SHA256 для подписи\n\nconst crypto = require('crypto');\n\nconst apiKey = $env.BITGET_API_KEY;\nconst secretKey = $env.BITGET_SECRET_KEY;\nconst passphrase = $env.BITGET_PASSPHRASE;\n\nconst timestamp = Date.now().toString();\nconst method = 'GET';\nconst requestPath = '/api/v2/spot/trade/unfilled-orders';\nconst queryString = '?startTime=' + (Date.now() - 86400000);\nconst body = '';\n\n// Формируем строку для подписи\nconst prehash = timestamp + method + requestPath + queryString + body;\nconst signature = crypto.createHmac('sha256', secretKey)\n  .update(prehash)\n  .digest('base64');\n\n// Делаем запрос\nconst response = await this.helpers.httpRequest({\n  method: 'GET',\n  url: 'https://api.bitget.com' + requestPath + queryString,\n  headers: {\n    'ACCESS-KEY': apiKey,\n    'ACCESS-SIGN': signature,\n    'ACCESS-TIMESTAMP': timestamp,\n    'ACCESS-PASSPHRASE': passphrase,\n    'Content-Type': 'application/json',\n    'locale': 'en-US'\n  }\n});\n\nconst orders = response.data || [];\nconst openCount = Array.isArray(orders) ? orders.length : 0;\n\nreturn [{\n  json: {\n    ...$input.first().json,\n    openPositions: openCount,\n    canTrade: openCount < 3\n  }\n}];"
+        },
+        "id": "check-positions",
+        "name": "Check Positions",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2420,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": ""
+            },
+            "conditions": [
+              {
+                "id": "can-trade",
+                "leftValue": "={{ $json.canTrade }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ]
+          }
+        },
+        "id": "if-can-trade",
+        "name": "IF Can Trade",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          2640,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// === PLACE ORDER ===\n// Размещение рыночного ордера через Bitget Spot API v2\n// HMAC-SHA256 подпись согласно документации Bitget\n\nconst crypto = require('crypto');\n\nconst apiKey = $env.BITGET_API_KEY;\nconst secretKey = $env.BITGET_SECRET_KEY;\nconst passphrase = $env.BITGET_PASSPHRASE;\n\nconst data = $json;\nconst side = data.signal === 'BUY' ? 'buy' : 'sell';\n\nconst timestamp = Date.now().toString();\nconst method = 'POST';\nconst requestPath = '/api/v2/spot/trade/place-order';\n\nconst bodyObj = {\n  symbol: data.symbol,\n  side: side,\n  orderType: 'market',\n  size: '50',\n  force: 'gtc'\n};\n\nconst bodyStr = JSON.stringify(bodyObj);\n\n// HMAC-SHA256 подпись\nconst prehash = timestamp + method + requestPath + bodyStr;\nconst signature = crypto.createHmac('sha256', secretKey)\n  .update(prehash)\n  .digest('base64');\n\ntry {\n  const response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.bitget.com' + requestPath,\n    headers: {\n      'ACCESS-KEY': apiKey,\n      'ACCESS-SIGN': signature,\n      'ACCESS-TIMESTAMP': timestamp,\n      'ACCESS-PASSPHRASE': passphrase,\n      'Content-Type': 'application/json',\n      'locale': 'en-US'\n    },\n    body: bodyObj\n  });\n\n  return [{\n    json: {\n      ...data,\n      orderId: response.data?.orderId || 'unknown',\n      orderStatus: 'placed',\n      side: side,\n      orderSize: 50\n    }\n  }];\n} catch (err) {\n  return [{\n    json: {\n      ...data,\n      orderId: null,\n      orderStatus: 'failed',\n      orderError: err.message,\n      side: side\n    }\n  }];\n}"
+        },
+        "id": "place-order",
+        "name": "Place Order (Bitget)",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2860,
+          180
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// === SET STOP LOSS ===\n// Устанавливаем план-ордер (стоп-лосс) через Bitget API\n// triggerPrice берём из MTF Analyzer расчёта\n\nconst crypto = require('crypto');\n\nconst apiKey = $env.BITGET_API_KEY;\nconst secretKey = $env.BITGET_SECRET_KEY;\nconst passphrase = $env.BITGET_PASSPHRASE;\n\nconst data = $json;\n\nif (!data.orderId || data.orderStatus === 'failed') {\n  return [{ json: { ...data, stopLossStatus: 'skipped', reason: 'Ордер не был размещён' } }];\n}\n\nconst timestamp = Date.now().toString();\nconst method = 'POST';\nconst requestPath = '/api/v2/spot/trade/place-plan-order';\n\nconst side = data.signal === 'BUY' ? 'sell' : 'buy'; // Стоп-лосс = обратная сторона\n\nconst bodyObj = {\n  symbol: data.symbol,\n  side: side,\n  triggerPrice: data.stopLoss.toString(),\n  orderType: 'market',\n  size: data.orderSize.toString(),\n  triggerType: 'mark_price',\n  planType: 'normal_plan'\n};\n\nconst bodyStr = JSON.stringify(bodyObj);\nconst prehash = timestamp + method + requestPath + bodyStr;\nconst signature = crypto.createHmac('sha256', secretKey)\n  .update(prehash)\n  .digest('base64');\n\ntry {\n  const response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.bitget.com' + requestPath,\n    headers: {\n      'ACCESS-KEY': apiKey,\n      'ACCESS-SIGN': signature,\n      'ACCESS-TIMESTAMP': timestamp,\n      'ACCESS-PASSPHRASE': passphrase,\n      'Content-Type': 'application/json',\n      'locale': 'en-US'\n    },\n    body: bodyObj\n  });\n\n  return [{\n    json: {\n      ...data,\n      stopLossOrderId: response.data?.orderId || 'unknown',\n      stopLossStatus: 'placed'\n    }\n  }];\n} catch (err) {\n  return [{\n    json: {\n      ...data,\n      stopLossOrderId: null,\n      stopLossStatus: 'failed',\n      stopLossError: err.message\n    }\n  }];\n}"
+        },
+        "id": "set-stop-loss",
+        "name": "Set Stop Loss",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3080,
+          180
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "chat_id",
+                "value": "={{ $env.TELEGRAM_CHAT_ID || '' }}"
+              },
+              {
+                "name": "text",
+                "value": "=✅ <b>Ордер открыт</b>\n\nð Пара: <code>{{ $json.symbol }}</code>\nð Сигнал: <b>{{ $json.signal }}</b>\nð° Цена: <code>{{ $json.price }}</code>\nð Стоп: <code>{{ $json.stopLoss }}</code>\nð¯ Тейк: <code>{{ $json.takeProfit }}</code>\nð Уверенность: <b>{{ $json.confidence }}%</b>\n\nð RSI 15M/1H/4H: {{ $json.rsi15m }}/{{ $json.rsi1h }}/{{ $json.rsi4h }}\nð Bull: {{ $json.bullScore }} | ð» Bear: {{ $json.bearScore }}\nð Order ID: <code>{{ $json.orderId }}</code>\n⏰ {{ $json.timestamp }}"
+              },
+              {
+                "name": "parse_mode",
+                "value": "HTML"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "tg-order-alert",
+        "name": "TG: Order Alert",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3300,
+          180
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// === ЛОГИРОВАНИЕ СДЕЛКИ ===\n// Обновляем PnL в статических данных воркфлоу\n// и формируем запись для Google Sheets\n\nconst staticData = $getWorkflowStaticData('global');\nstaticData.tradesCount = (staticData.tradesCount || 0) + 1;\n\nconst data = $json;\n\nreturn [{\n  json: {\n    timestamp: data.timestamp,\n    symbol: data.symbol,\n    signal: data.signal,\n    price: data.price,\n    stopLoss: data.stopLoss,\n    takeProfit: data.takeProfit,\n    confidence: data.confidence + '%',\n    rsi15m: data.rsi15m,\n    rsi1h: data.rsi1h,\n    rsi4h: data.rsi4h,\n    orderId: data.orderId || 'N/A',\n    orderStatus: data.orderStatus,\n    stopLossStatus: data.stopLossStatus || 'N/A',\n    bullScore: data.bullScore,\n    bearScore: data.bearScore\n  }\n}];"
+        },
+        "id": "log-trade",
+        "name": "Log Trade",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3520,
+          180
+        ]
+      },
+      {
+        "parameters": {
+          "unit": "seconds",
+          "value": 2
+        },
+        "id": "wait-rate-limit",
+        "name": "Wait 2s (Rate Limit)",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          3740,
+          420
+        ]
+      },
+      {
+        "parameters": {
+          "unit": "seconds",
+          "value": 2
+        },
+        "id": "wait-no-signal",
+        "name": "Wait 2s (No Signal)",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          2420,
+          540
+        ]
+      }
+    ],
+    "connections": {
+      "Schedule Trigger (15m)": {
+        "main": [
+          [
+            {
+              "node": "Circuit Breaker",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Circuit Breaker": {
+        "main": [
+          [
+            {
+              "node": "IF Circuit Breaker",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "IF Circuit Breaker": {
+        "main": [
+          [
+            {
+              "node": "TG: Circuit Breaker Alert",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Set Trading Pairs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Set Trading Pairs": {
+        "main": [
+          [
+            {
+              "node": "Split Pairs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Split Pairs": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Pairs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Loop Over Pairs": {
+        "main": [
+          [
+            {
+              "node": "Bitget 15M Candles",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Bitget 1H Candles",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Bitget 4H Candles",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Bitget 15M Candles": {
+        "main": [
+          [
+            {
+              "node": "Merge Candles",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Bitget 1H Candles": {
+        "main": [
+          [
+            {
+              "node": "Merge Candles",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Bitget 4H Candles": {
+        "main": [
+          [
+            {
+              "node": "Merge Candles",
+              "type": "main",
+              "index": 2
+            }
+          ]
+        ]
+      },
+      "Merge Candles": {
+        "main": [
+          [
+            {
+              "node": "MTF Analyzer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "MTF Analyzer": {
+        "main": [
+          [
+            {
+              "node": "IF Signal Active",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "IF Signal Active": {
+        "main": [
+          [
+            {
+              "node": "Check Positions",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Wait 2s (No Signal)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Positions": {
+        "main": [
+          [
+            {
+              "node": "IF Can Trade",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "IF Can Trade": {
+        "main": [
+          [
+            {
+              "node": "Place Order (Bitget)",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Wait 2s (No Signal)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Place Order (Bitget)": {
+        "main": [
+          [
+            {
+              "node": "Set Stop Loss",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Set Stop Loss": {
+        "main": [
+          [
+            {
+              "node": "TG: Order Alert",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "TG: Order Alert": {
+        "main": [
+          [
+            {
+              "node": "Log Trade",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Log Trade": {
+        "main": [
+          [
+            {
+              "node": "Wait 2s (Rate Limit)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Wait 2s (Rate Limit)": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Pairs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Wait 2s (No Signal)": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Pairs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "saveManualExecutions": true,
+      "callerPolicy": "workflowsFromSameOwner",
+      "errorWorkflow": "101"
+    },
+    "staticData": {
+      "node:Schedule Trigger (15m)": {
+        "recurrenceRules": []
+      },
+      "global": {
+        "pnlDate": "2026-03-18",
+        "dailyPnL": 0,
+        "tradesCount": 0
+      }
+    },
+    "meta": null,
+    "pinData": null,
+    "versionId": "c098e313-4575-4bc2-9868-927a63dc6c9d",
+    "activeVersionId": "c098e313-4575-4bc2-9868-927a63dc6c9d",
+    "versionCounter": 14,
+    "triggerCount": 1,
+    "tags": [
+      {
+        "updatedAt": "2026-03-14T14:22:51.291Z",
+        "createdAt": "2026-03-14T14:22:51.291Z",
+        "id": "gLjtDjTQHeBK5anJ",
+        "name": "trading"
+      },
+      {
+        "updatedAt": "2026-03-14T14:22:51.296Z",
+        "createdAt": "2026-03-14T14:22:51.296Z",
+        "id": "nGuB0fBh23PbW9K1",
+        "name": "bitget"
+      },
+      {
+        "updatedAt": "2026-03-14T14:22:51.298Z",
+        "createdAt": "2026-03-14T14:22:51.298Z",
+        "id": "xv6FTbDp2teSoKVP",
+        "name": "crypto"
+      }
+    ],
+    "shared": [
+      {
+        "updatedAt": "2026-03-14T14:22:51.282Z",
+        "createdAt": "2026-03-14T14:22:51.282Z",
+        "role": "workflow:owner",
+        "workflowId": "100",
+        "projectId": "2IxyGF1TauHheEqR",
+        "project": {
+          "updatedAt": "2026-03-14T14:44:57.875Z",
+          "createdAt": "2026-03-09T12:09:46.279Z",
+          "id": "2IxyGF1TauHheEqR",
+          "name": "Yaroslav Mishin <mecrol1989@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "creatorId": "e68761fa-96f9-4fe3-bc27-73f2a8fa4618"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": "Version c098e313",
+      "description": ""
+    }
+  },
+  {
+    "updatedAt": "2026-03-14T14:24:39.000Z",
+    "createdAt": "2026-03-14T14:22:58.017Z",
+    "id": "101",
+    "name": "Error Handler",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {},
+        "id": "error-trigger",
+        "name": "Error Trigger",
+        "type": "n8n-nodes-base.errorTrigger",
+        "typeVersion": 1,
+        "position": [
+          220,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// === ФОРМАТИРОВАНИЕ ОШИБКИ ===\n// Извлекаем информацию об ошибке из execution data\n\nconst execution = $json.execution || {};\nconst workflow = $json.workflow || {};\nconst lastNodeExecuted = execution.lastNodeExecuted || 'Unknown';\nconst errorMessage = execution.error?.message || 'Неизвестная ошибка';\nconst timestamp = new Date().toISOString();\n\nreturn [{\n  json: {\n    workflowName: workflow.name || 'Unknown Workflow',\n    lastNode: lastNodeExecuted,\n    errorMessage: errorMessage,\n    timestamp: timestamp,\n    executionId: execution.id || 'N/A'\n  }\n}];"
+        },
+        "id": "format-error",
+        "name": "Format Error",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          440,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "chat_id",
+                "value": "={{ $env.TELEGRAM_CHAT_ID || '' }}"
+              },
+              {
+                "name": "text",
+                "value": "=ð¨ <b>ОШИБКА В ТОРГОВОЙ СИСТЕМЕ</b>\n\nð Воркфлоу: <code>{{ $json.workflowName }}</code>\n⚙️ Нода: <code>{{ $json.lastNode }}</code>\n❌ Ошибка: {{ $json.errorMessage }}\n⏰ Время: {{ $json.timestamp }}\nð Execution: <code>{{ $json.executionId }}</code>"
+              },
+              {
+                "name": "parse_mode",
+                "value": "HTML"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "tg-error-alert",
+        "name": "TG: Error Alert",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          660,
+          300
+        ]
+      }
+    ],
+    "connections": {
+      "Error Trigger": {
+        "main": [
+          [
+            {
+              "node": "Format Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Error": {
+        "main": [
+          [
+            {
+              "node": "TG: Error Alert",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "saveManualExecutions": true
+    },
+    "staticData": null,
+    "meta": null,
+    "pinData": null,
+    "versionId": "123f0374-5c39-464c-aa24-83e25c9d7e23",
+    "activeVersionId": "123f0374-5c39-464c-aa24-83e25c9d7e23",
+    "versionCounter": 6,
+    "triggerCount": 0,
+    "tags": [
+      {
+        "updatedAt": "2026-03-14T14:22:51.291Z",
+        "createdAt": "2026-03-14T14:22:51.291Z",
+        "id": "gLjtDjTQHeBK5anJ",
+        "name": "trading"
+      },
+      {
+        "updatedAt": "2026-03-14T14:22:58.036Z",
+        "createdAt": "2026-03-14T14:22:58.036Z",
+        "id": "lwefJ0IuWF69Bqax",
+        "name": "error-handler"
+      }
+    ],
+    "shared": [
+      {
+        "updatedAt": "2026-03-14T14:22:58.025Z",
+        "createdAt": "2026-03-14T14:22:58.025Z",
+        "role": "workflow:owner",
+        "workflowId": "101",
+        "projectId": "2IxyGF1TauHheEqR",
+        "project": {
+          "updatedAt": "2026-03-14T14:44:57.875Z",
+          "createdAt": "2026-03-09T12:09:46.279Z",
+          "id": "2IxyGF1TauHheEqR",
+          "name": "Yaroslav Mishin <mecrol1989@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "creatorId": "e68761fa-96f9-4fe3-bc27-73f2a8fa4618"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  },
+  {
+    "updatedAt": "2026-03-14T18:57:55.298Z",
+    "createdAt": "2026-03-14T14:23:03.630Z",
+    "id": "102",
+    "name": "Morning Brief",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 7 * * *"
+              }
+            ]
+          }
+        },
+        "id": "schedule-morning",
+        "name": "Schedule (07:00 Almaty)",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          224,
+          304
+        ],
+        "notes": "Каждый день в 07:00 Asia/Almaty"
+      },
+      {
+        "parameters": {
+          "url": "https://api.alternative.me/fng/",
+          "options": {
+            "timeout": 10000
+          }
+        },
+        "id": "http-fng",
+        "name": "Fear & Greed Index",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          448,
+          208
+        ]
+      },
+      {
+        "parameters": {
+          "url": "https://api.bitget.com/api/v2/spot/market/tickers?symbol=BTCUSDT",
+          "options": {
+            "timeout": 10000
+          }
+        },
+        "id": "http-btc-price",
+        "name": "BTC Price (Bitget)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          448,
+          400
+        ]
+      },
+      {
+        "parameters": {},
+        "id": "merge-morning",
+        "name": "Merge Data",
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3,
+        "position": [
+          672,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// === УТРЕННИЙ БРИФИНГ ===\n// Форматируем отчёт по Fear & Greed и текущей цене BTC\n\nconst items = $input.all();\n\n// Fear & Greed Index\nlet fngValue = 50;\nlet fngClassification = 'Neutral';\ntry {\n  const fngData = items[0]?.json?.data?.[0] || items[0]?.json;\n  fngValue = parseInt(fngData?.value || 50);\n  fngClassification = fngData?.value_classification || 'Neutral';\n} catch(e) {\n  fngValue = 50;\n  fngClassification = 'N/A';\n}\n\n// BTC Price\nlet btcPrice = 0;\ntry {\n  const tickerData = items[1]?.json?.data?.[0] || items[1]?.json?.data || items[1]?.json;\n  btcPrice = parseFloat(tickerData?.lastPr || tickerData?.close || 0);\n} catch(e) {\n  btcPrice = 0;\n}\n\n// Рекомендация на основе Fear & Greed\nlet recommendation = '';\nlet emoji = '';\nif (fngValue >= 75) {\n  recommendation = '⚠️ ОСТОРОЖНО — Extreme Greed. Рынок перегрет, избегайте крупных позиций';\n  emoji = 'ð´';\n} else if (fngValue >= 55) {\n  recommendation = '✅ ТОРГОВАТЬ — Умеренный оптимизм. Торги согласно сигналам';\n  emoji = 'ð¢';\n} else if (fngValue >= 25) {\n  recommendation = '⚡ ТОРГОВАТЬ ОСТОРОЖНО — Нейтральный рынок. Уменьшенные позиции';\n  emoji = 'ð¡';\n} else {\n  recommendation = 'ð СТОП — Extreme Fear. Только консервативные ордера';\n  emoji = 'ð´';\n}\n\nconst now = new Date();\nconst dateStr = now.toLocaleDateString('ru-RU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });\n\nreturn [{\n  json: {\n    btcPrice: btcPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),\n    fngValue,\n    fngClassification,\n    recommendation,\n    emoji,\n    dateStr,\n    message: `☀️ <b>Доброе утро! Дневной брифинг</b>\\nð ${dateStr}\\n\\nð° BTC: <code>$${btcPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}</code>\\n\\nð± Fear \\u0026 Greed: <b>${fngValue}</b> (${fngClassification}) ${emoji}\\n${'█'.repeat(Math.floor(fngValue / 5))}${'░'.repeat(20 - Math.floor(fngValue / 5))} ${fngValue}%\\n\\n${recommendation}\\n\\nð Пары: BTC ETH SOL BNB\\n⏰ Следующий анализ через 15 мин`\n  }\n}];"
+        },
+        "id": "format-brief",
+        "name": "Format Brief",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          880,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "chat_id",
+                "value": "={{ $env.TELEGRAM_CHAT_ID || '' }}"
+              },
+              {
+                "name": "text",
+                "value": "={{ $json.message }}"
+              },
+              {
+                "name": "parse_mode",
+                "value": "HTML"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "tg-morning-brief",
+        "name": "TG: Morning Brief",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1104,
+          304
+        ]
+      }
+    ],
+    "connections": {
+      "Schedule (07:00 Almaty)": {
+        "main": [
+          [
+            {
+              "node": "Fear & Greed Index",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "BTC Price (Bitget)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fear & Greed Index": {
+        "main": [
+          [
+            {
+              "node": "Merge Data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "BTC Price (Bitget)": {
+        "main": [
+          [
+            {
+              "node": "Merge Data",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Merge Data": {
+        "main": [
+          [
+            {
+              "node": "Format Brief",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Brief": {
+        "main": [
+          [
+            {
+              "node": "TG: Morning Brief",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "saveManualExecutions": true,
+      "timezone": "Asia/Almaty"
+    },
+    "staticData": {
+      "node:Schedule (07:00 Almaty)": {
+        "recurrenceRules": []
+      }
+    },
+    "meta": null,
+    "pinData": {},
+    "versionId": "992688c0-7aaf-4052-974b-f1c42e4fec04",
+    "activeVersionId": "27f99c1e-356a-4c57-8b5e-6d021022b12c",
+    "versionCounter": 9,
+    "triggerCount": 1,
+    "tags": [
+      {
+        "updatedAt": "2026-03-14T14:23:03.647Z",
+        "createdAt": "2026-03-14T14:23:03.647Z",
+        "id": "LeeLMqbLIDl0Lsav",
+        "name": "morning-brief"
+      },
+      {
+        "updatedAt": "2026-03-14T14:22:51.291Z",
+        "createdAt": "2026-03-14T14:22:51.291Z",
+        "id": "gLjtDjTQHeBK5anJ",
+        "name": "trading"
+      }
+    ],
+    "shared": [
+      {
+        "updatedAt": "2026-03-14T14:23:03.637Z",
+        "createdAt": "2026-03-14T14:23:03.637Z",
+        "role": "workflow:owner",
+        "workflowId": "102",
+        "projectId": "2IxyGF1TauHheEqR",
+        "project": {
+          "updatedAt": "2026-03-14T14:44:57.875Z",
+          "createdAt": "2026-03-09T12:09:46.279Z",
+          "id": "2IxyGF1TauHheEqR",
+          "name": "Yaroslav Mishin <mecrol1989@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "creatorId": "e68761fa-96f9-4fe3-bc27-73f2a8fa4618"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  },
+  {
+    "updatedAt": "2026-03-17T17:23:12.000Z",
+    "createdAt": "2026-03-15T08:27:49.660Z",
+    "id": "3sN1TYxiKixWnWpA",
+    "name": "BTC RSI Signal v1",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "minutes",
+                "minutesInterval": 15
+              }
+            ]
+          }
+        },
+        "id": "schedule-trigger",
+        "name": "Schedule Trigger",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          224,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "url": "https://api.bitget.com/api/v2/spot/market/candles",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "symbol",
+                "value": "={{ $json.symbol }}"
+              },
+              {
+                "name": "granularity",
+                "value": "15min"
+              },
+              {
+                "name": "limit",
+                "value": "15"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {}
+            }
+          }
+        },
+        "id": "http-bitget",
+        "name": "Bitget Candles",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          672,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "const candles = $input.item.json.data;\nconst symbol = $node[\"Symbols List\"].json.symbol;\n\nif (!candles || candles.length < 15) return { json: { symbol, rsi: 50, price: 0, shouldNotify: false, signal: 'HOLD' } };\n\nconst closePrices = candles.map(c => parseFloat(c[4])).reverse();\n\nfunction calculateRSI(prices, period = 14) {\n  let gains = 0, losses = 0;\n  for (let i = 1; i <= period; i++) {\n      let diff = prices[i] - prices[i - 1];\n      if (diff >= 0) gains += diff;\n      else losses -= diff;\n  }\n  let avgGain = gains / period; let avgLoss = losses / period;\n  for (let i = period + 1; i < prices.length; i++) {\n      let diff = prices[i] - prices[i - 1];\n      let gain = diff >= 0 ? diff : 0;\n      let loss = diff < 0 ? -diff : 0;\n      avgGain = (avgGain * (period - 1) + gain) / period;\n      avgLoss = (avgLoss * (period - 1) + loss) / period;\n  }\n  if (avgLoss === 0) return 100;\n  let rs = avgGain / avgLoss;\n  return 100 - (100 / (1 + rs));\n}\n\nconst rsi = calculateRSI(closePrices);\nconst currentPrice = closePrices[closePrices.length - 1];\n\nreturn {\n  symbol: symbol,\n  rsi: rsi.toFixed(2),\n  price: currentPrice.toString(),\n  shouldNotify: rsi < 45 || rsi > 70,\n  signal: rsi < 45 ? 'BUY' : (rsi > 70 ? 'SELL' : 'HOLD'),\n  time: new Date().toISOString()\n};"
+        },
+        "id": "code-rsi",
+        "name": "RSI + Anti-spam",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          912,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "id": "cond-notify",
+                "leftValue": "={{ $json.shouldNotify }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "if-should-notify",
+        "name": "Should Notify?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1152,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://172.17.0.1:18789/",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "Bearer 00d5056f76b718f2b26c8c95e0ae9069f079e6095a63065f"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"agent\": \"signal_generator\",\n  \"message\": \"BTC/USDT RSI={{ $json.rsi }}, Цена={{ $json.price }}, Сигнал={{ $json.signal }}. Коротко прокомментируй (1-2 предложения).\"\n}",
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "http-openclaw",
+        "name": "OpenClaw Signal",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1392,
+          208
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.telegram.org/bot[REDACTED]/sendMessage",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"chat_id\": \"543955549\",\n  \"text\": \"{{ $('RSI + Anti-spam').item.json.telegramText }}\\n\\nð СИМУЛЯЦИЯ — реальный ордер не выставлен\\n\\nð¬ {{ $('OpenClaw Signal').item.json.body || $('OpenClaw Signal').item.json.text || $('OpenClaw Signal').item.json.message || '' }}\"\n}",
+          "options": {}
+        },
+        "id": "telegram-notify",
+        "name": "Telegram Signal",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1664,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "const rsiData = $input.item.json;\nreturn {\n    symbol: rsiData.symbol,\n    time: rsiData.time,\n    signal: rsiData.signal,\n    status: 'SIMULATED',\n    price: rsiData.price,\n    rsi: rsiData.rsi\n}"
+        },
+        "id": "paper_trade_id_999",
+        "name": "Paper Trade",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1024,
+          560
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://213.155.23.208:18790",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"time\": \"{{ $json.time }}\",\n  \"symbol\": \"{{ $json.symbol }}\",\n  \"signal\": \"{{ $json.signal }}\",\n  \"price\": \"{{ $json.price }}\",\n  \"rsi\": \"{{ $json.rsi }}\",\n  \"status\": \"{{ $json.status }}\"\n}",
+          "options": {
+            "proxy": ""
+          }
+        },
+        "id": "log_trade_http_999",
+        "name": "Log Trade",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          1232,
+          560
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "return [\n  { json: { symbol: 'BTCUSDT' } },\n  { json: { symbol: 'ETHUSDT' } },\n  { json: { symbol: 'SOLUSDT' } },\n  { json: { symbol: 'BNBUSDT' } },\n  { json: { symbol: 'XRPUSDT' } },\n  { json: { symbol: 'DOGEUSDT' } },\n  { json: { symbol: 'ADAUSDT' } },\n  { json: { symbol: 'AVAXUSDT' } }\n  ];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          432,
+          304
+        ],
+        "id": "1e5c057c-f9ef-46c0-8a02-d7c94998debe",
+        "name": "Symbols List"
+      }
+    ],
+    "connections": {
+      "Schedule Trigger": {
+        "main": [
+          [
+            {
+              "node": "Symbols List",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Bitget Candles": {
+        "main": [
+          [
+            {
+              "node": "RSI + Anti-spam",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "RSI + Anti-spam": {
+        "main": [
+          [
+            {
+              "node": "Should Notify?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Should Notify?": {
+        "main": [
+          [
+            {
+              "node": "OpenClaw Signal",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Paper Trade",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      },
+      "OpenClaw Signal": {
+        "main": [
+          [
+            {
+              "node": "Paper Trade",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Telegram Signal",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Paper Trade": {
+        "main": [
+          [
+            {
+              "node": "Log Trade",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Log Trade": {
+        "main": [
+          [
+            {
+              "node": "Telegram Signal",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Symbols List": {
+        "main": [
+          [
+            {
+              "node": "Bitget Candles",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "binaryMode": "separate",
+      "availableInMCP": false
+    },
+    "staticData": {
+      "node:Schedule Trigger": {
+        "recurrenceRules": []
+      }
+    },
+    "meta": null,
+    "pinData": {
+      "Schedule Trigger": [
+        {
+          "json": {
+            "timestamp": "2026-03-17T07:02:00.396-04:00",
+            "Readable date": "March 17th 2026, 7:02:00 am",
+            "Readable time": "7:02:00 am",
+            "Day of week": "Tuesday",
+            "Year": "2026",
+            "Month": "March",
+            "Day of month": "17",
+            "Hour": "07",
+            "Minute": "02",
+            "Second": "00",
+            "Timezone": "America/New_York (UTC-04:00)"
+          },
+          "pairedItem": {
+            "item": 0
+          }
+        }
+      ]
+    },
+    "versionId": "aa23b439-4332-4cc2-9647-24fe0da04e05",
+    "activeVersionId": "aa23b439-4332-4cc2-9647-24fe0da04e05",
+    "versionCounter": 451,
+    "triggerCount": 1,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-03-15T08:27:49.672Z",
+        "createdAt": "2026-03-15T08:27:49.672Z",
+        "role": "workflow:owner",
+        "workflowId": "3sN1TYxiKixWnWpA",
+        "projectId": "2IxyGF1TauHheEqR",
+        "project": {
+          "updatedAt": "2026-03-14T14:44:57.875Z",
+          "createdAt": "2026-03-09T12:09:46.279Z",
+          "id": "2IxyGF1TauHheEqR",
+          "name": "Yaroslav Mishin <mecrol1989@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "creatorId": "e68761fa-96f9-4fe3-bc27-73f2a8fa4618"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  }
+]

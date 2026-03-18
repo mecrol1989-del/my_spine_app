@@ -1,0 +1,677 @@
+{
+  "name": "AI Trading System — BTC ETH SOL BNB",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger (15m)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// === CIRCUIT BREAKER ===\n// Проверяем дневной PnL из статических данных воркфлоу\n// Если убыток превышает $50 за день — останавливаем торги\n\nconst staticData = $getWorkflowStaticData('global');\nconst today = new Date().toISOString().slice(0, 10);\n\n// Сброс PnL при смене дня\nif (staticData.pnlDate !== today) {\n  staticData.pnlDate = today;\n  staticData.dailyPnL = 0;\n  staticData.tradesCount = 0;\n}\n\nconst dailyPnL = staticData.dailyPnL || 0;\nconst tradesCount = staticData.tradesCount || 0;\n\nif (dailyPnL < -50) {\n  // Circuit breaker сработал — остановка торгов\n  return [{\n    json: {\n      circuitBreaker: true,\n      dailyPnL: dailyPnL,\n      tradesCount: tradesCount,\n      message: `ð CIRCUIT BREAKER: Дневной убыток $${Math.abs(dailyPnL).toFixed(2)} превысил лимит $50. Торги остановлены.`\n    }\n  }];\n}\n\n// Всё ОК — передаём дальше\nreturn [{\n  json: {\n    circuitBreaker: false,\n    dailyPnL: dailyPnL,\n    tradesCount: tradesCount\n  }\n}];"
+      },
+      "id": "circuit-breaker",
+      "name": "Circuit Breaker",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "id": "cb-check",
+              "leftValue": "={{ $json.circuitBreaker }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "if-circuit-breaker",
+      "name": "IF Circuit Breaker",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $env.TELEGRAM_CHAT_ID || '' }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "tg-circuit-breaker",
+      "name": "TG: Circuit Breaker Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "object": [
+            {
+              "name": "pairs",
+              "value": "=[{\"symbol\":\"BTCUSDT\"},{\"symbol\":\"ETHUSDT\"},{\"symbol\":\"SOLUSDT\"},{\"symbol\":\"BNBUSDT\"}]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-pairs",
+      "name": "Set Trading Pairs",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        880,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Разворачиваем массив пар в отдельные items для обработки в цикле\nconst pairs = JSON.parse($json.pairs);\nreturn pairs.map(p => ({ json: p }));"
+      },
+      "id": "split-pairs",
+      "name": "Split Pairs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-pairs",
+      "name": "Loop Over Pairs",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1320,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.bitget.com/api/v2/spot/market/candles?symbol={{ $json.symbol }}&granularity=15min&limit=50",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "http-candles-15m",
+      "name": "Bitget 15M Candles",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.bitget.com/api/v2/spot/market/candles?symbol={{ $('Loop Over Pairs').item.json.symbol }}&granularity=1Hutc&limit=50",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "http-candles-1h",
+      "name": "Bitget 1H Candles",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.bitget.com/api/v2/spot/market/candles?symbol={{ $('Loop Over Pairs').item.json.symbol }}&granularity=4Hutc&limit=200",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "http-candles-4h",
+      "name": "Bitget 4H Candles",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByPosition": "combine",
+        "options": {}
+      },
+      "id": "merge-candles",
+      "name": "Merge Candles",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1760,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// === MTF ANALYZER ===\n// Мульти-таймфрейм анализ с RSI, EMA, MACD, ATR\n// Score-based система генерации торговых сигналов\n\nconst symbol = $('Loop Over Pairs').item.json.symbol;\n\n// Утилиты расчёта индикаторов\nfunction parseCandles(raw) {\n  if (!raw || !Array.isArray(raw)) return [];\n  return raw.map(c => ({\n    ts: parseInt(c[0]),\n    o: parseFloat(c[1]),\n    h: parseFloat(c[2]),\n    l: parseFloat(c[3]),\n    c: parseFloat(c[4]),\n    v: parseFloat(c[5])\n  })).sort((a, b) => a.ts - b.ts);\n}\n\nfunction calcRSI(closes, period = 14) {\n  if (closes.length < period + 1) return 50;\n  let gains = 0, losses = 0;\n  for (let i = closes.length - period; i < closes.length; i++) {\n    const diff = closes[i] - closes[i - 1];\n    if (diff > 0) gains += diff;\n    else losses += Math.abs(diff);\n  }\n  const avgGain = gains / period;\n  const avgLoss = losses / period;\n  if (avgLoss === 0) return 100;\n  const rs = avgGain / avgLoss;\n  return 100 - (100 / (1 + rs));\n}\n\nfunction calcEMA(closes, period) {\n  if (closes.length < period) return closes[closes.length - 1];\n  const k = 2 / (period + 1);\n  let ema = closes.slice(0, period).reduce((a, b) => a + b) / period;\n  for (let i = period; i < closes.length; i++) {\n    ema = closes[i] * k + ema * (1 - k);\n  }\n  return ema;\n}\n\nfunction calcMACD(closes) {\n  const ema12 = calcEMA(closes, 12);\n  const ema26 = calcEMA(closes, 26);\n  const macdLine = ema12 - ema26;\n  // Сигнальная линия — EMA(9) от MACD (упрощённая)\n  const signal = macdLine * 0.8; // Приближение\n  const histogram = macdLine - signal;\n  return { macdLine, signal, histogram };\n}\n\nfunction calcATR(candles, period = 14) {\n  if (candles.length < period + 1) return 0;\n  let trSum = 0;\n  for (let i = candles.length - period; i < candles.length; i++) {\n    const tr = Math.max(\n      candles[i].h - candles[i].l,\n      Math.abs(candles[i].h - candles[i - 1].c),\n      Math.abs(candles[i].l - candles[i - 1].c)\n    );\n    trSum += tr;\n  }\n  return trSum / period;\n}\n\n// Парсим данные со всех трёх таймфреймов\nconst items = $input.all();\nlet raw15m = [], raw1h = [], raw4h = [];\n\ntry {\n  // Данные приходят в разном формате — обрабатываем оба варианта\n  const d0 = items[0]?.json?.data || items[0]?.json || [];\n  const d1 = items[1]?.json?.data || items[1]?.json || [];\n  const d2 = items[2]?.json?.data || items[2]?.json || [];\n  raw15m = Array.isArray(d0) ? d0 : [];\n  raw1h = Array.isArray(d1) ? d1 : [];\n  raw4h = Array.isArray(d2) ? d2 : [];\n} catch(e) {\n  return [{ json: { signal: 'HOLD', reason: 'Ошибка парсинга данных: ' + e.message, symbol } }];\n}\n\nconst candles15m = parseCandles(raw15m);\nconst candles1h = parseCandles(raw1h);\nconst candles4h = parseCandles(raw4h);\n\nif (candles15m.length < 20 || candles1h.length < 20 || candles4h.length < 50) {\n  return [{ json: { signal: 'HOLD', reason: 'Недостаточно данных для анализа', symbol } }];\n}\n\n// Текущая цена\nconst price = candles15m[candles15m.length - 1].c;\n\n// RSI для каждого таймфрейма\nconst closes15m = candles15m.map(c => c.c);\nconst closes1h = candles1h.map(c => c.c);\nconst closes4h = candles4h.map(c => c.c);\n\nconst rsi15m = calcRSI(closes15m, 14);\nconst rsi1h = calcRSI(closes1h, 14);\nconst rsi4h = calcRSI(closes4h, 14);\n\n// EMA(50) и EMA(200) для 4H\nconst ema50_4h = calcEMA(closes4h, 50);\nconst ema200_4h = calcEMA(closes4h, 200);\n\n// MACD для 15M\nconst macd15m = calcMACD(closes15m);\n\n// ATR(14) для 15M\nconst atr15m = calcATR(candles15m, 14);\n\n// === SCORE-BASED LOGIC ===\nlet bullScore = 0;\nlet bearScore = 0;\nlet reasons = [];\n\n// 4H тренд: цена выше EMA200 → бычий (+3)\nif (price > ema200_4h) {\n  bullScore += 3;\n  reasons.push('4H: Цена > EMA200 (бычий тренд)');\n} else {\n  bearScore += 3;\n  reasons.push('4H: Цена < EMA200 (медвежий тренд)');\n}\n\n// 4H: цена выше EMA50 → дополнительный бычий сигнал (+1)\nif (price > ema50_4h) {\n  bullScore += 1;\n  reasons.push('4H: Цена > EMA50');\n} else {\n  bearScore += 1;\n  reasons.push('4H: Цена < EMA50');\n}\n\n// 15M RSI перепроданность → BUY сигнал (+2)\nif (rsi15m < 30) {\n  bullScore += 2;\n  reasons.push('15M: RSI < 30 (перепроданность)');\n}\n\n// 15M RSI перекупленность → SELL сигнал (+2)\nif (rsi15m > 70) {\n  bearScore += 2;\n  reasons.push('15M: RSI > 70 (перекупленность)');\n}\n\n// 1H RSI > 65 → блокировка покупки\nlet buyBlocked = false;\nif (rsi1h > 65) {\n  buyBlocked = true;\n  reasons.push('1H: RSI > 65 (BUY заблокирован)');\n}\n\n// MACD гистограмма положительная → бычий (+1)\nif (macd15m.histogram > 0) {\n  bullScore += 1;\n  reasons.push('15M: MACD гистограмма > 0');\n} else {\n  bearScore += 1;\n  reasons.push('15M: MACD гистограмма < 0');\n}\n\n// 4H RSI выше 60 → слабый бычий (+1)\nif (rsi4h > 50 && rsi4h < 70) {\n  bullScore += 1;\n}\nif (rsi4h < 40) {\n  bearScore += 1;\n}\n\n// Определяем сигнал\nlet signal = 'HOLD';\nlet confidence = 0;\nconst maxScore = 8; // Максимально возможный балл\n\nif (bullScore > bearScore && bullScore >= 4 && !buyBlocked) {\n  signal = 'BUY';\n  confidence = Math.min(Math.round((bullScore / maxScore) * 100), 95);\n} else if (bearScore > bullScore && bearScore >= 4) {\n  signal = 'SELL';\n  confidence = Math.min(Math.round((bearScore / maxScore) * 100), 95);\n} else {\n  signal = 'HOLD';\n  confidence = 0;\n}\n\n// Стоп-лосс и тейк-профит на основе ATR\nconst stopLoss = signal === 'BUY'\n  ? parseFloat((price - atr15m * 2).toFixed(6))\n  : parseFloat((price + atr15m * 2).toFixed(6));\n\nconst takeProfit = signal === 'BUY'\n  ? parseFloat((price + atr15m * 4).toFixed(6))\n  : parseFloat((price - atr15m * 4).toFixed(6));\n\nreturn [{\n  json: {\n    symbol,\n    signal,\n    confidence,\n    price,\n    stopLoss,\n    takeProfit,\n    atr: parseFloat(atr15m.toFixed(6)),\n    rsi15m: parseFloat(rsi15m.toFixed(2)),\n    rsi1h: parseFloat(rsi1h.toFixed(2)),\n    rsi4h: parseFloat(rsi4h.toFixed(2)),\n    ema50_4h: parseFloat(ema50_4h.toFixed(6)),\n    ema200_4h: parseFloat(ema200_4h.toFixed(6)),\n    macdHistogram: parseFloat(macd15m.histogram.toFixed(6)),\n    bullScore,\n    bearScore,\n    buyBlocked,\n    reasons,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "mtf-analyzer",
+      "name": "MTF Analyzer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "id": "sig-not-hold",
+              "leftValue": "={{ $json.signal }}",
+              "rightValue": "HOLD",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "id": "conf-gt-60",
+              "leftValue": "={{ $json.confidence }}",
+              "rightValue": 60,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-signal",
+      "name": "IF Signal Active",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// === ПРОВЕРКА ОТКРЫТЫХ ПОЗИЦИЙ ===\n// Bitget v2 API: получить открытые ордера\n// Используем HMAC-SHA256 для подписи\n\nconst crypto = require('crypto');\n\nconst apiKey = $env.BITGET_API_KEY;\nconst secretKey = $env.BITGET_SECRET_KEY;\nconst passphrase = $env.BITGET_PASSPHRASE;\n\nconst timestamp = Date.now().toString();\nconst method = 'GET';\nconst requestPath = '/api/v2/spot/trade/unfilled-orders';\nconst queryString = '?startTime=' + (Date.now() - 86400000);\nconst body = '';\n\n// Формируем строку для подписи\nconst prehash = timestamp + method + requestPath + queryString + body;\nconst signature = crypto.createHmac('sha256', secretKey)\n  .update(prehash)\n  .digest('base64');\n\n// Делаем запрос\nconst response = await this.helpers.httpRequest({\n  method: 'GET',\n  url: 'https://api.bitget.com' + requestPath + queryString,\n  headers: {\n    'ACCESS-KEY': apiKey,\n    'ACCESS-SIGN': signature,\n    'ACCESS-TIMESTAMP': timestamp,\n    'ACCESS-PASSPHRASE': passphrase,\n    'Content-Type': 'application/json',\n    'locale': 'en-US'\n  }\n});\n\nconst orders = response.data || [];\nconst openCount = Array.isArray(orders) ? orders.length : 0;\n\nreturn [{\n  json: {\n    ...$input.first().json,\n    openPositions: openCount,\n    canTrade: openCount < 3\n  }\n}];"
+      },
+      "id": "check-positions",
+      "name": "Check Positions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "id": "can-trade",
+              "leftValue": "={{ $json.canTrade }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "if-can-trade",
+      "name": "IF Can Trade",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// === PLACE ORDER ===\n// Размещение рыночного ордера через Bitget Spot API v2\n// HMAC-SHA256 подпись согласно документации Bitget\n\nconst crypto = require('crypto');\n\nconst apiKey = $env.BITGET_API_KEY;\nconst secretKey = $env.BITGET_SECRET_KEY;\nconst passphrase = $env.BITGET_PASSPHRASE;\n\nconst data = $json;\nconst side = data.signal === 'BUY' ? 'buy' : 'sell';\n\nconst timestamp = Date.now().toString();\nconst method = 'POST';\nconst requestPath = '/api/v2/spot/trade/place-order';\n\nconst bodyObj = {\n  symbol: data.symbol,\n  side: side,\n  orderType: 'market',\n  size: '50',\n  force: 'gtc'\n};\n\nconst bodyStr = JSON.stringify(bodyObj);\n\n// HMAC-SHA256 подпись\nconst prehash = timestamp + method + requestPath + bodyStr;\nconst signature = crypto.createHmac('sha256', secretKey)\n  .update(prehash)\n  .digest('base64');\n\ntry {\n  const response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.bitget.com' + requestPath,\n    headers: {\n      'ACCESS-KEY': apiKey,\n      'ACCESS-SIGN': signature,\n      'ACCESS-TIMESTAMP': timestamp,\n      'ACCESS-PASSPHRASE': passphrase,\n      'Content-Type': 'application/json',\n      'locale': 'en-US'\n    },\n    body: bodyObj\n  });\n\n  return [{\n    json: {\n      ...data,\n      orderId: response.data?.orderId || 'unknown',\n      orderStatus: 'placed',\n      side: side,\n      orderSize: 50\n    }\n  }];\n} catch (err) {\n  return [{\n    json: {\n      ...data,\n      orderId: null,\n      orderStatus: 'failed',\n      orderError: err.message,\n      side: side\n    }\n  }];\n}"
+      },
+      "id": "place-order",
+      "name": "Place Order (Bitget)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2860,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// === SET STOP LOSS ===\n// Устанавливаем план-ордер (стоп-лосс) через Bitget API\n// triggerPrice берём из MTF Analyzer расчёта\n\nconst crypto = require('crypto');\n\nconst apiKey = $env.BITGET_API_KEY;\nconst secretKey = $env.BITGET_SECRET_KEY;\nconst passphrase = $env.BITGET_PASSPHRASE;\n\nconst data = $json;\n\nif (!data.orderId || data.orderStatus === 'failed') {\n  return [{ json: { ...data, stopLossStatus: 'skipped', reason: 'Ордер не был размещён' } }];\n}\n\nconst timestamp = Date.now().toString();\nconst method = 'POST';\nconst requestPath = '/api/v2/spot/trade/place-plan-order';\n\nconst side = data.signal === 'BUY' ? 'sell' : 'buy'; // Стоп-лосс = обратная сторона\n\nconst bodyObj = {\n  symbol: data.symbol,\n  side: side,\n  triggerPrice: data.stopLoss.toString(),\n  orderType: 'market',\n  size: data.orderSize.toString(),\n  triggerType: 'mark_price',\n  planType: 'normal_plan'\n};\n\nconst bodyStr = JSON.stringify(bodyObj);\nconst prehash = timestamp + method + requestPath + bodyStr;\nconst signature = crypto.createHmac('sha256', secretKey)\n  .update(prehash)\n  .digest('base64');\n\ntry {\n  const response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.bitget.com' + requestPath,\n    headers: {\n      'ACCESS-KEY': apiKey,\n      'ACCESS-SIGN': signature,\n      'ACCESS-TIMESTAMP': timestamp,\n      'ACCESS-PASSPHRASE': passphrase,\n      'Content-Type': 'application/json',\n      'locale': 'en-US'\n    },\n    body: bodyObj\n  });\n\n  return [{\n    json: {\n      ...data,\n      stopLossOrderId: response.data?.orderId || 'unknown',\n      stopLossStatus: 'placed'\n    }\n  }];\n} catch (err) {\n  return [{\n    json: {\n      ...data,\n      stopLossOrderId: null,\n      stopLossStatus: 'failed',\n      stopLossError: err.message\n    }\n  }];\n}"
+      },
+      "id": "set-stop-loss",
+      "name": "Set Stop Loss",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3080,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $env.TELEGRAM_CHAT_ID || '' }}"
+            },
+            {
+              "name": "text",
+              "value": "=✅ <b>Ордер открыт</b>\n\nð Пара: <code>{{ $json.symbol }}</code>\nð Сигнал: <b>{{ $json.signal }}</b>\nð° Цена: <code>{{ $json.price }}</code>\nð Стоп: <code>{{ $json.stopLoss }}</code>\nð¯ Тейк: <code>{{ $json.takeProfit }}</code>\nð Уверенность: <b>{{ $json.confidence }}%</b>\n\nð RSI 15M/1H/4H: {{ $json.rsi15m }}/{{ $json.rsi1h }}/{{ $json.rsi4h }}\nð Bull: {{ $json.bullScore }} | ð» Bear: {{ $json.bearScore }}\nð Order ID: <code>{{ $json.orderId }}</code>\n⏰ {{ $json.timestamp }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "tg-order-alert",
+      "name": "TG: Order Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3300,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// === ЛОГИРОВАНИЕ СДЕЛКИ ===\n// Обновляем PnL в статических данных воркфлоу\n// и формируем запись для Google Sheets\n\nconst staticData = $getWorkflowStaticData('global');\nstaticData.tradesCount = (staticData.tradesCount || 0) + 1;\n\nconst data = $json;\n\nreturn [{\n  json: {\n    timestamp: data.timestamp,\n    symbol: data.symbol,\n    signal: data.signal,\n    price: data.price,\n    stopLoss: data.stopLoss,\n    takeProfit: data.takeProfit,\n    confidence: data.confidence + '%',\n    rsi15m: data.rsi15m,\n    rsi1h: data.rsi1h,\n    rsi4h: data.rsi4h,\n    orderId: data.orderId || 'N/A',\n    orderStatus: data.orderStatus,\n    stopLossStatus: data.stopLossStatus || 'N/A',\n    bullScore: data.bullScore,\n    bearScore: data.bearScore\n  }\n}];"
+      },
+      "id": "log-trade",
+      "name": "Log Trade",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3520,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "unit": "seconds",
+        "value": 2
+      },
+      "id": "wait-rate-limit",
+      "name": "Wait 2s (Rate Limit)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3740,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "unit": "seconds",
+        "value": 2
+      },
+      "id": "wait-no-signal",
+      "name": "Wait 2s (No Signal)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2420,
+        540
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (15m)": {
+      "main": [
+        [
+          {
+            "node": "Circuit Breaker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Circuit Breaker": {
+      "main": [
+        [
+          {
+            "node": "IF Circuit Breaker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Circuit Breaker": {
+      "main": [
+        [
+          {
+            "node": "TG: Circuit Breaker Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Trading Pairs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Trading Pairs": {
+      "main": [
+        [
+          {
+            "node": "Split Pairs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Pairs": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Pairs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Pairs": {
+      "main": [
+        [
+          {
+            "node": "Bitget 15M Candles",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Bitget 1H Candles",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Bitget 4H Candles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bitget 15M Candles": {
+      "main": [
+        [
+          {
+            "node": "Merge Candles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bitget 1H Candles": {
+      "main": [
+        [
+          {
+            "node": "Merge Candles",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Bitget 4H Candles": {
+      "main": [
+        [
+          {
+            "node": "Merge Candles",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Candles": {
+      "main": [
+        [
+          {
+            "node": "MTF Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MTF Analyzer": {
+      "main": [
+        [
+          {
+            "node": "IF Signal Active",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Signal Active": {
+      "main": [
+        [
+          {
+            "node": "Check Positions",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 2s (No Signal)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Positions": {
+      "main": [
+        [
+          {
+            "node": "IF Can Trade",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Can Trade": {
+      "main": [
+        [
+          {
+            "node": "Place Order (Bitget)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 2s (No Signal)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Place Order (Bitget)": {
+      "main": [
+        [
+          {
+            "node": "Set Stop Loss",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Stop Loss": {
+      "main": [
+        [
+          {
+            "node": "TG: Order Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TG: Order Alert": {
+      "main": [
+        [
+          {
+            "node": "Log Trade",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Trade": {
+      "main": [
+        [
+          {
+            "node": "Wait 2s (Rate Limit)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 2s (Rate Limit)": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Pairs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 2s (No Signal)": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Pairs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "error-handler"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "trading"
+    },
+    {
+      "name": "bitget"
+    },
+    {
+      "name": "crypto"
+    }
+  ],
+  "triggerCount": 1,
+  "active": false,
+  "id": "100"
+}

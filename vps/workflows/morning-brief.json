@@ -1,0 +1,197 @@
+{
+  "name": "Morning Brief",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-morning",
+      "name": "Schedule (07:00 Almaty)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        220,
+        300
+      ],
+      "notes": "Каждый день в 07:00 Asia/Almaty"
+    },
+    {
+      "parameters": {
+        "url": "https://api.alternative.me/fng/",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "http-fng",
+      "name": "Fear & Greed Index",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.bitget.com/api/v2/spot/market/tickers?symbol=BTCUSDT",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "http-btc-price",
+      "name": "BTC Price (Bitget)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByPosition": "combine",
+        "options": {}
+      },
+      "id": "merge-morning",
+      "name": "Merge Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// === УТРЕННИЙ БРИФИНГ ===\n// Форматируем отчёт по Fear & Greed и текущей цене BTC\n\nconst items = $input.all();\n\n// Fear & Greed Index\nlet fngValue = 50;\nlet fngClassification = 'Neutral';\ntry {\n  const fngData = items[0]?.json?.data?.[0] || items[0]?.json;\n  fngValue = parseInt(fngData?.value || 50);\n  fngClassification = fngData?.value_classification || 'Neutral';\n} catch(e) {\n  fngValue = 50;\n  fngClassification = 'N/A';\n}\n\n// BTC Price\nlet btcPrice = 0;\ntry {\n  const tickerData = items[1]?.json?.data?.[0] || items[1]?.json?.data || items[1]?.json;\n  btcPrice = parseFloat(tickerData?.lastPr || tickerData?.close || 0);\n} catch(e) {\n  btcPrice = 0;\n}\n\n// Рекомендация на основе Fear & Greed\nlet recommendation = '';\nlet emoji = '';\nif (fngValue >= 75) {\n  recommendation = '⚠️ ОСТОРОЖНО — Extreme Greed. Рынок перегрет, избегайте крупных позиций';\n  emoji = 'ð´';\n} else if (fngValue >= 55) {\n  recommendation = '✅ ТОРГОВАТЬ — Умеренный оптимизм. Торги согласно сигналам';\n  emoji = 'ð¢';\n} else if (fngValue >= 25) {\n  recommendation = '⚡ ТОРГОВАТЬ ОСТОРОЖНО — Нейтральный рынок. Уменьшенные позиции';\n  emoji = 'ð¡';\n} else {\n  recommendation = 'ð СТОП — Extreme Fear. Только консервативные ордера';\n  emoji = 'ð´';\n}\n\nconst now = new Date();\nconst dateStr = now.toLocaleDateString('ru-RU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });\n\nreturn [{\n  json: {\n    btcPrice: btcPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),\n    fngValue,\n    fngClassification,\n    recommendation,\n    emoji,\n    dateStr,\n    message: `☀️ <b>Доброе утро! Дневной брифинг</b>\\nð ${dateStr}\\n\\nð° BTC: <code>$${btcPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}</code>\\n\\nð± Fear \\u0026 Greed: <b>${fngValue}</b> (${fngClassification}) ${emoji}\\n${'█'.repeat(Math.floor(fngValue / 5))}${'░'.repeat(20 - Math.floor(fngValue / 5))} ${fngValue}%\\n\\n${recommendation}\\n\\nð Пары: BTC ETH SOL BNB\\n⏰ Следующий анализ через 15 мин`\n  }\n}];"
+      },
+      "id": "format-brief",
+      "name": "Format Brief",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $env.TELEGRAM_CHAT_ID || '' }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "parse_mode",
+              "value": "HTML"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "tg-morning-brief",
+      "name": "TG: Morning Brief",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule (07:00 Almaty)": {
+      "main": [
+        [
+          {
+            "node": "Fear & Greed Index",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "BTC Price (Bitget)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fear & Greed Index": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BTC Price (Bitget)": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Data": {
+      "main": [
+        [
+          {
+            "node": "Format Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Brief": {
+      "main": [
+        [
+          {
+            "node": "TG: Morning Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "timezone": "Asia/Almaty"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "trading"
+    },
+    {
+      "name": "morning-brief"
+    }
+  ],
+  "triggerCount": 1,
+  "active": false,
+  "id": "102"
+}

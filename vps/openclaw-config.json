@@ -1,0 +1,108 @@
+{
+  "gateway": {
+    "host": "0.0.0.0",
+    "port": 8080,
+    "auth_token": "WILL_BE_SET_VIA_CLI"
+  },
+  "providers": {
+    "anthropic": {
+      "api_key": "[REDACTED]",
+      "default_model": "claude-sonnet-4-20250514",
+      "max_tokens": 8192
+    },
+    "openai": {
+      "api_key": "[REDACTED]",
+      "default_model": "gpt-4o",
+      "max_tokens": 8192
+    }
+  },
+  "agents": {
+    "trading_orchestrator": {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-20250514",
+      "system_prompt": "Ты главный оркестратор мультиагентной торговой системы на бирже Bitget. Координируешь всех агентов: market_analyst анализирует рынок → signal_generator генерирует сигнал → risk_manager оценивает риск → trade_executor исполняет сделку → position_monitor следит за позицией. Принимай финальное решение только после получения отчётов от всех агентов. Без подтверждения risk_manager НЕ исполнять сделки. Отвечай на русском.",
+      "tools": [
+        "file_read",
+        "file_write",
+        "http_request",
+        "agent_call"
+      ],
+      "memory": true,
+      "max_iterations": 30
+    },
+    "market_analyst": {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "system_prompt": "Ты агент анализа рынка. Получаешь OHLCV данные с Bitget API и выполняешь технический анализ: тренд (EMA 20/50/200), уровни поддержки/сопротивления, RSI, MACD, объёмы, паттерны свечей. Возвращай JSON: { trend, key_levels, indicators, market_structure, bias: 'bullish'|'bearish'|'neutral' }. Анализируй минимум 2 таймфрейма: 1h и 4h.",
+      "tools": [
+        "http_request",
+        "file_read"
+      ],
+      "memory": false,
+      "max_iterations": 10
+    },
+    "signal_generator": {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-20250514",
+      "system_prompt": "Ты агент генерации торговых сигналов. На основе анализа market_analyst формируешь конкретный торговый сигнал: тип (LONG/SHORT/SKIP), точку входа, стоп-лосс, тейк-профит 1/2/3, размер позиции в % от депозита. Возвращай JSON: { action, entry, sl, tp1, tp2, tp3, size_percent, confidence: 0-100, reason }. Если уверенность ниже 65 — возвращай action: 'SKIP'.",
+      "tools": [
+        "file_read"
+      ],
+      "memory": false,
+      "max_iterations": 8
+    },
+    "risk_manager": {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "system_prompt": "Ты агент управления рисками. Проверяешь сигнал от signal_generator: 1) Risk/Reward ratio минимум 1:2, 2) Размер стопа не более 2% от депозита, 3) Текущие открытые позиции (не более 3 одновременно), 4) Общая экспозиция не более 30% депозита, 5) Дневной лимит убытков не превышен (-5%). Возвращай JSON: { approved: true|false, reason, adjusted_size_percent }. Если хоть одно условие нарушено — approved: false.",
+      "tools": [
+        "http_request",
+        "file_read"
+      ],
+      "memory": true,
+      "max_iterations": 5
+    },
+    "trade_executor": {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-20250514",
+      "system_prompt": "Ты агент исполнения сделок через Bitget API. Получаешь одобренный сигнал от risk_manager и исполняешь ордер: market или limit ордер на вход, стоп-лосс ордер, тейк-профит ордера. Используй Bitget Futures API v2. После исполнения возвращай JSON с деталями ордеров и подтверждением. ВАЖНО: исполняй ТОЛЬКО если в сигнале approved: true.",
+      "tools": [
+        "http_request",
+        "file_write"
+      ],
+      "memory": false,
+      "max_iterations": 5
+    },
+    "position_monitor": {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "system_prompt": "Ты агент мониторинга открытых позиций на Bitget. Каждые N минут проверяешь: текущий P&L всех позиций, достигнут ли TP1/TP2/TP3, не сработал ли стоп. При достижении TP1 — передвигай стоп в безубыток. При просадке позиции более 1.5% — уведомляй orchestrator. Возвращай статус всех позиций в JSON.",
+      "tools": [
+        "http_request",
+        "file_read",
+        "file_write"
+      ],
+      "memory": true,
+      "max_iterations": 10
+    }
+  },
+  "channels": {
+    "telegram": {
+      "bot_token": "[REDACTED]",
+      "allowed_chats": [
+        "543955549"
+      ],
+      "default_agent": "trading_orchestrator"
+    }
+  },
+  "approvals": {
+    "require_approval_for": [
+      "http_request_post"
+    ],
+    "approval_channel": "telegram"
+  },
+  "browser": {
+    "headless": true,
+    "timeout": 30000
+  }
+}

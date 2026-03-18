@@ -1,0 +1,61 @@
+{"time":"2026-03-15T12:38:18Z","signal":"LONG","price":"71823","rsi":"43.98","status":"SIMULATED"}
+{"test": "host_direct"}
+{"time":"2026-03-15T16:40:47Z","signal":"LONG","price":"71823","rsi":"43.98","status":"SIMULATED"}
+{"test": "container_direct"}
+{"time":"2026-03-15T18:07:20Z","signal":"LONG","price":"71823","rsi":"43.98","status":"SIMULATED"}
+{"time":"2026-03-16T07:31:59Z","signal":"LONG","price":"71823","rsi":"43.98","status":"SIMULATED"}
+{"time": "2026-03-16T11:29:46Z", "signal": "FINAL_CHECK", "status": "SIMULATED"}
+{"time": "2026-03-16T21:10:00Z", "price": "74000", "rsi": "55.55", "status": "CURL_TEST"}
+{"time": "2026-03-16T21:40:00Z", "status": "N8N_CURL_TEST_PUBLIC"}
+{"time": "2026-03-17T15:30:00Z", "symbol": "CURL_DIRECT_TEST", "status": "OK"}
+{"time": "2026-03-17T16:17:59.847Z }", "signal": "BUY }}", "price": "73743.29 }}", "rsi": "38.87 }}", "status": "SIMULATED }}", "symbol": "{{ $json.symbol }}"}
+{"time": "2026-03-17T16:17:59.848Z }", "signal": "BUY }}", "price": "2315.7 }}", "rsi": "44.53 }}", "status": "SIMULATED }}", "symbol": "{{ $json.symbol }}"}
+{"time": "2026-03-17T16:17:59.849Z }", "signal": "BUY }}", "price": "93.42 }}", "rsi": "36.20 }}", "status": "SIMULATED }}", "symbol": "{{ $json.symbol }}"}
+{"time": "2026-03-17T16:17:59.853Z }", "signal": "BUY }}", "price": "665.5 }}", "rsi": "35.57 }}", "status": "SIMULATED }}", "symbol": "{{ $json.symbol }}"}
+{"time": "2026-03-17T16:17:59.856Z }", "signal": "BUY }}", "price": "1.505 }}", "rsi": "37.19 }}", "status": "SIMULATED }}", "symbol": "{{ $json.symbol }}"}
+{"time": "2026-03-17T16:17:59.857Z }", "signal": "BUY }}", "price": "0.09883 }}", "rsi": "35.10 }}", "status": "SIMULATED }}", "symbol": "{{ $json.symbol }}"}
+{"time": "2026-03-17T16:17:59.859Z }", "signal": "BUY }}", "price": "0.2844 }}", "rsi": "30.99 }}", "status": "SIMULATED }}", "symbol": "{{ $json.symbol }}"}
+{"time": "2026-03-17T16:17:59.860Z }", "signal": "BUY }}", "price": "10.24 }}", "rsi": "30.77 }}", "status": "SIMULATED }}", "symbol": "{{ $json.symbol }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "{{ $json.time }}", "symbol": "{{ $json.symbol }}", "signal": "{{ $json.signal }}", "price": "{{ $json.price }}", "rsi": "{{ $json.rsi }}", "status": "{{ $json.status }}"}
+{"time": "2026-03-17T16:41:28.893Z", "symbol": "SOLUSDT", "signal": "BUY", "price": "93.73", "rsi": "43.10", "status": "SIMULATED"}
+{"time": "2026-03-17T16:41:28.895Z", "symbol": "BNBUSDT", "signal": "BUY", "price": "666.5", "rsi": "38.61", "status": "SIMULATED"}
+{"time": "2026-03-17T16:41:28.896Z", "symbol": "XRPUSDT", "signal": "BUY", "price": "1.5083", "rsi": "43.03", "status": "SIMULATED"}
+{"time": "2026-03-17T16:41:28.897Z", "symbol": "DOGEUSDT", "signal": "BUY", "price": "0.09897", "rsi": "40.05", "status": "SIMULATED"}
+{"time": "2026-03-17T16:41:28.897Z", "symbol": "ADAUSDT", "signal": "BUY", "price": "0.2849", "rsi": "42.86", "status": "SIMULATED"}
+{"time": "2026-03-17T16:41:28.898Z", "symbol": "AVAXUSDT", "signal": "BUY", "price": "10.25", "rsi": "38.46", "status": "SIMULATED"}
+{"time": "2026-03-17T17:42:47.402Z", "symbol": "BTCUSDT", "signal": "BUY", "price": "73719", "rsi": "30.02", "status": "SIMULATED"}
+{"time": "2026-03-17T17:42:47.406Z", "symbol": "SOLUSDT", "signal": "BUY", "price": "94.15", "rsi": "43.53", "status": "SIMULATED"}
+{"time": "2026-03-17T17:42:47.408Z", "symbol": "BNBUSDT", "signal": "BUY", "price": "667.5", "rsi": "33.61", "status": "SIMULATED"}
+{"time": "2026-03-17T17:42:47.409Z", "symbol": "XRPUSDT", "signal": "BUY", "price": "1.5009", "rsi": "24.39", "status": "SIMULATED"}
+{"time": "2026-03-17T17:42:47.411Z", "symbol": "DOGEUSDT", "signal": "BUY", "price": "0.09894", "rsi": "32.75", "status": "SIMULATED"}
+{"time": "2026-03-17T17:42:47.412Z", "symbol": "ADAUSDT", "signal": "BUY", "price": "0.2867", "rsi": "39.39", "status": "SIMULATED"}
